@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -92,67 +93,8 @@ internal static class PluginConfig
                     if (StartOfRound.Instance == null)
                         return;
 
-                    var items = Resources.FindObjectsOfTypeAll<Item>();
-                    var renderedItems = new HashSet<Item>();
+                    StartOfRound.Instance.StartCoroutine(RenderAllCoroutine());
 
-                    foreach (var item in items)
-                    {
-                        if (item.spawnPrefab == null)
-                            continue;
-
-                        var originalIcon = item.itemIcon;
-                        item.itemIcon = null;
-
-                        var spawnedItem = Object.Instantiate(item.spawnPrefab);
-
-                        try
-                        {
-                            var grabbableObject = spawnedItem.GetComponentInChildren<GrabbableObject>();
-                            grabbableObject.Start();
-                            grabbableObject.Update();
-                            var animators = grabbableObject.GetComponentsInChildren<Animator>();
-                            foreach (var animator in animators)
-                                animator.Update(Time.deltaTime);
-                            GrabbableObjectPatch.ComputeSprite(grabbableObject);
-                        }
-                        catch { }
-                        finally
-                        {
-                            Object.Destroy(spawnedItem);
-                        }
-
-                        if (item.itemIcon != null && item.itemIcon != GrabbableObjectPatch.BrokenSprite)
-                            renderedItems.Add(item);
-
-                        item.itemIcon = originalIcon;
-                    }
-
-                    var reportBuilder = new StringBuilder("Items that failed to render: ");
-                    var anyFailed = false;
-
-                    foreach (var item in items)
-                    {
-                        if (!renderedItems.Contains(item))
-                        {
-                            reportBuilder.Append(item.itemName);
-                            if (GrabbableObjectPatch.ItemHasIcon(item))
-                                reportBuilder.Append(" (✓)");
-                            else
-                                reportBuilder.Append(" (✗)");
-                            reportBuilder.Append(", ");
-                            anyFailed = true;
-                        }
-                    }
-
-                    if (anyFailed)
-                    {
-                        reportBuilder.Length -= 2;
-                        RuntimeIcons.Log.LogInfo(reportBuilder);
-                    }
-                    else
-                    {
-                        RuntimeIcons.Log.LogInfo("No items failed to render.");
-                    }
                 });
         }
                 
@@ -225,4 +167,73 @@ internal static class PluginConfig
         orphanedEntries.Clear(); // Clear orphaned entries (Unbinded/Abandoned entries)
         config.Save(); // Save the config file
     }
+
+    private static IEnumerator RenderAllCoroutine()
+    {
+        var items = Resources.FindObjectsOfTypeAll<Item>();
+        var renderedItems = new HashSet<Item>();
+
+        foreach (var item in items)
+        {
+            if (item.spawnPrefab == null)
+                continue;
+
+            var originalIcon = item.itemIcon;
+            item.itemIcon = null;
+
+            var spawnedItem = Object.Instantiate(item.spawnPrefab);
+
+            try
+            {
+                var grabbableObject = spawnedItem.GetComponentInChildren<GrabbableObject>();
+                grabbableObject.Start();
+                grabbableObject.Update();
+                var animators = grabbableObject.GetComponentsInChildren<Animator>();
+                foreach (var animator in animators)
+                    animator.Update(Time.deltaTime);
+                GrabbableObjectPatch.ComputeSprite(grabbableObject);
+            }
+            catch { }
+            finally
+            {
+                Object.Destroy(spawnedItem);
+            }
+
+            if (item.itemIcon != null && item.itemIcon != GrabbableObjectPatch.BrokenSprite)
+                renderedItems.Add(item);
+
+            item.itemIcon = originalIcon;
+            
+            yield return null;
+        }
+
+        var reportBuilder = new StringBuilder("Items that failed to render: ");
+        var anyFailed = false;
+
+        foreach (var item in items)
+        {
+            if (!renderedItems.Contains(item))
+            {
+                reportBuilder.Append(item.itemName);
+                if (GrabbableObjectPatch.ItemHasIcon(item))
+                    reportBuilder.Append(" (✓)");
+                else
+                    reportBuilder.Append(" (✗)");
+                reportBuilder.Append(", ");
+                anyFailed = true;
+            }
+        }
+
+        if (anyFailed)
+        {
+            reportBuilder.Length -= 2;
+            RuntimeIcons.Log.LogInfo(reportBuilder);
+        }
+        else
+        {
+            RuntimeIcons.Log.LogInfo("No items failed to render.");
+        }
+    }
+    
+
 }

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-    <PropertyGroup>
-        <!--De-Comment
-        the next line if you want to automatically move compiled assemblies to a test profile-->
-        <!--<ProfileDirectory>G:\Modded\Gale\lethal-company\profiles\Debug</ProfileDirectory>-->
-    </PropertyGroup>
-</Project>
