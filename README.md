@@ -76,4 +76,4 @@ If an item you have created in the Unity editor without assigning an icon does n
 
 You may want to adjust your resting rotation to get a better result. Items will normally be rendered from an angle similar to the perspective of a player that has dropped the item in front of them and then stood back and crouched. This angle will be adjusted somewhat based on the item's dimensions to give the image more depth.
 
-**Note:** Only the X and Z values of the resting rotation vector of an item are used. To adjust the Y rotation, the floor Y offset should be used instead.
+**Note:** Only the X and Z values of the `restingRotation` vector of an item are used. To adjust the Y rotation, the `floorYOffset` should be used instead.
