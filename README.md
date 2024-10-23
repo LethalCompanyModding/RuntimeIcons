@@ -25,15 +25,16 @@ Runtime Icons brings a much needed update to your hotbar! Enjoy breathtakingly-r
 
 ## How it works
 
+
+When the game is loaded, it generates icons for any items that lack them to replace the old gear icons in the HUD. These icons can be fetched and loaded into the correct orientation (or overridden in the config) to properly display an image in the players hotbar. This means any "Modded" scrap should be compatible! Additional options are provided in the config.
+
+**Note:** Modded scrap may not render if it has not been built correctly. Modders should refer to the [Mod Developer Information](#mod-developer-information) section.
+
 <p float="left">
 <img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/0a1afb9f5716f0f1736de9e767dc12aa3e291f70/.github/images/renders/modded/scarlet_devil_mansion/painting.png" alt="SDM Painting Render" width="70"/>
 <img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/0a1afb9f5716f0f1736de9e767dc12aa3e291f70/.github/images/renders/modded/testaccount_core/Crowbar.png" alt="Testaccount Crowbar Render" width="70"/>
 <img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/0a1afb9f5716f0f1736de9e767dc12aa3e291f70/.github/images/renders/modded/bell_crab.png" alt="Bell Crab Render" width="70"/>
 </p>
-
-When the game is loaded, it generates icons for any items that lack them to replace the old gear icons in the HUD. These icons can be fetched and loaded into the correct orientation (or overided in the config) to properly display an image in the players hotbar. This means any "Modded" scrap should be compatible! Aditional options are provided in the config.
-
-**Note:** Modded scrap may not render if it has not been built correctly. Modders should refer to the [Mod Developer Information](#mod-developer-information) section.
 
 <details>
 <summary>Gameplay Images</summary>
