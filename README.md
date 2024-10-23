@@ -8,14 +8,14 @@ RuntimeIcons
 ### Never lose track of your scrap again!
 
 <p float="left">
-<img src=".github/images/renders/Bell.png" alt="Bell Render" width="80"/>
-<img src=".github/images/renders/apparatus.png" alt="Apparatus Render" width="80"/>
-<img src=".github/images/renders/egg.png" alt="Easter Egg Render" width="80"/>
-<img src=".github/images/renders/tea_kettle.png" alt="Tea kettle Render" width="80"/>
-<img src=".github/images/renders/axle.png" alt="Large Axle Render" width="80"/>
-<img src=".github/images/renders/knife.png" alt="Knife Render" width="80"/>
-<img src=".github/images/renders/jug.png" alt="Chemical Jug Render" width="80"/>
-<img src=".github/images/renders/ammo.png" alt="Ammo Render" width="80"/>
+<img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/1d1d58b2c29af5e8bf5b48a49fad87db79cde9c3/.github/images/renders/Bell.png" alt="Bell Render" width="80"/>
+<img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/1d1d58b2c29af5e8bf5b48a49fad87db79cde9c3/.github/images/renders/apparatus.png" alt="Apparatus Render" width="80"/>
+<img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/1d1d58b2c29af5e8bf5b48a49fad87db79cde9c3/.github/images/renders/egg.png" alt="Easter Egg Render" width="80"/>
+<img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/1d1d58b2c29af5e8bf5b48a49fad87db79cde9c3/.github/images/renders/tea_kettle.png" alt="Tea kettle Render" width="80"/>
+<img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/1d1d58b2c29af5e8bf5b48a49fad87db79cde9c3/.github/images/renders/axle.png" alt="Large Axle Render" width="80"/>
+<img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/1d1d58b2c29af5e8bf5b48a49fad87db79cde9c3/.github/images/renders/knife.png" alt="Knife Render" width="80"/>
+<img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/1d1d58b2c29af5e8bf5b48a49fad87db79cde9c3/.github/images/renders/jug.png" alt="Chemical Jug Render" width="80"/>
+<img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/1d1d58b2c29af5e8bf5b48a49fad87db79cde9c3/.github/images/renders/ammo.png" alt="Ammo Render" width="80"/>
 </p>
 
 Runtime Icons brings a much-needed update to your hotbar! Enjoy breathtakingly-rendered scrap! With patent-pending technology your suit will scan each item you pick up and place its image on your hotbar so you know what to drop when that friendly neighborhood thumper rolls around the corner!
@@ -30,18 +30,18 @@ The first time an item that lacks an icon is spawned, it generates an icon to re
 **Note:** Modded scrap may not render if it has not been built correctly. Modders should refer to the [Mod Developer Information](#mod-developer-information) section.
 
 <p float="left">
-<img src=".github/images/renders/modded/scarlet_devil_mansion/painting.png" alt="SDM Painting Render" width="80"/>
-<img src=".github/images/renders/modded/testaccount_core/Crowbar.png" alt="Testaccount Crowbar Render" width="80"/>
-<img src=".github/images/renders/modded/bell_crab.png" alt="Bell Crab Render" width="80"/>
+<img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/1d1d58b2c29af5e8bf5b48a49fad87db79cde9c3/.github/images/renders/modded/scarlet_devil_mansion/painting.png" alt="SDM Painting Render" width="80"/>
+<img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/1d1d58b2c29af5e8bf5b48a49fad87db79cde9c3/.github/images/renders/modded/testaccount_core/Crowbar.png" alt="Testaccount Crowbar Render" width="80"/>
+<img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/1d1d58b2c29af5e8bf5b48a49fad87db79cde9c3/.github/images/renders/modded/bell_crab.png" alt="Bell Crab Render" width="80"/>
 </p>
 
 <details>
 <summary>Gameplay Images</summary>
 
 <p float="left">
-<img src=".github/images/gameplay/gameplay2.png" alt="Gameplay Screenshot 3" width="720"/>
+<img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/0a1afb9f5716f0f1736de9e767dc12aa3e291f70/.github/images/gameplay/gameplay2.png" alt="Gameplay Screenshot 3" width="720"/>
 <br>
-<img src=".github/images/gameplay/gameplay1.png" alt="Gameplay Screenshot 1" width="720"/>
+<img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/0a1afb9f5716f0f1736de9e767dc12aa3e291f70/.github/images/gameplay/gameplay1.png" alt="Gameplay Screenshot 1" width="720"/>
 </p>
 
 </details>
@@ -60,7 +60,7 @@ The following options are provided:
 ## Mod Developer Information
 
 <p float="left">
-<img src=".github/images/renders/base_gear.png" alt="Default Gear Icon" width="80"/>
+<img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/1d1d58b2c29af5e8bf5b48a49fad87db79cde9c3/.github/images/renders/base_gear.png" alt="Default Gear Icon" width="80"/>
 </p>
 
 ### My custom item is invisible!
