@@ -18,15 +18,14 @@ RuntimeIcons
 <img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/0a1afb9f5716f0f1736de9e767dc12aa3e291f70/.github/images/renders/ammo.png" alt="Ammo Render" width="70"/>
 </p>
 
-Runtime Icons brings a much needed update to your hotbar! Enjoy breathtakingly-rendered scrap! With patent-pending technology your suit will scan each item you pick up and place its image on your hotbar so you know what to drop when that friendly neighborhood thumper rolls around the corner!
+Runtime Icons brings a much-needed update to your hotbar! Enjoy breathtakingly-rendered scrap! With patent-pending technology your suit will scan each item you pick up and place its image on your hotbar so you know what to drop when that friendly neighborhood thumper rolls around the corner!
 
-9/10 employees agree, that with Runtime Icons your productivity goes up up up, and you leave less blood on company scrap, which makes the Company happy!
+9/10 employees agree that with Runtime Icons, your productivity goes up up up, and you leave less blood on company scrap, which makes the Company happy!
 
 
 ## How it works
 
-
-When the game is loaded, it generates icons for any items that lack them to replace the old gear icons in the HUD. These icons can be fetched and loaded into the correct orientation (or overridden in the config) to properly display an image in the players hotbar. This means any "Modded" scrap should be compatible! Additional options are provided in the config.
+The first time an item that lacks an icon is spawned, it generates an icon to replace the gear icon in the HUD. These items are placed into the correct orientation (which can be overridden in the config) to properly display an image in the player's hotbar. This means any Modded scrap should be compatible! Additional options are provided in the config.
 
 **Note:** Modded scrap may not render if it has not been built correctly. Modders should refer to the [Mod Developer Information](#mod-developer-information) section.
 
