@@ -25,7 +25,7 @@ Runtime Icons brings a much-needed update to your hotbar! Enjoy breathtakingly-r
 
 ## How it works
 
-The first time an item that lacks an icon is spawned, it generates an icon to replace the gear icon in the HUD. These items are placed into the correct orientation (which can be overridden in the config) to properly display an image in the player's hotbar. This means any Modded scrap should be compatible! Additional options are provided in the config.
+The first time an item that lacks an icon is spawned, it generates an icon to replace the gear icon in the HUD. These items are placed into the correct orientation (which can be overridden in the config) to properly display an image in the player's hotbar. This means any modded scrap should be compatible! Additional options are provided in the config.
 
 **Note:** Modded scrap may not render if it has not been built correctly. Modders should refer to the [Mod Developer Information](#mod-developer-information) section.
 
