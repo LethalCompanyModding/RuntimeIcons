@@ -1,4 +1,4 @@
 # Runtime Icons
 
-## 0.0.0
-- Mod still WIP
+## 0.1.5
+- Initial beta release
