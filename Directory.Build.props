@@ -51,8 +51,40 @@
         <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
         <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
         <LangVersion>latest</LangVersion>
-        <PublishProfile>Thunderstore</PublishProfile>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     </PropertyGroup>
+
+    <Target Name="Upload" AfterTargets="AfterBuild" Condition="'$(Upload)'=='TRUE'">
+        <PropertyGroup>
+            <DistributionDir>$(SolutionDir)\artifacts\tspublish\dist</DistributionDir>
+            <PluginsDir>$(DistributionDir)\plugins</PluginsDir>
+        </PropertyGroup>
+
+        <Message Importance="High" Text="Publishing" />
+        <RemoveDir Directories="$(DistributionDir)" />
+
+        <ItemGroup>
+            <OutputFiles Include="$(OutDir)\**" Exclude="**\*.deps.json" />
+        </ItemGroup>
+        <Copy
+            SourceFiles="@(OutputFiles)"
+            DestinationFolder="$(PluginsDir)"
+        />
+
+        <ItemGroup>
+            <PackageFiles Include="$(SolutionDir)\CHANGELOG.md" />
+            <PackageFiles Include="$(SolutionDir)\LICENSE" />
+        </ItemGroup>
+        <Copy
+            DestinationFolder="$(DistributionDir)"
+            SourceFiles="@(PackageFiles)"
+        />
+
+        <Exec
+            Command='dotnet tcli publish --package-name "$(Product)" --package-namespace "$(Authors)" --package-version "$(PACKAGE_VERSION)"'
+            ConsoleToMSBuild="true"
+            WorkingDirectory="$(SolutionDir)\artifacts\tspublish"
+        />
+    </Target>
 
 </Project>
