@@ -21,7 +21,7 @@
             Version="64.0.0-ngd.0"
             Private="False"
         />
-        
+
     </ItemGroup>
 
     <!-- Defining the reference files that have to be publicized. -->
@@ -29,5 +29,5 @@
         <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.1"
             PrivateAssets="all" />
     </ItemGroup>
-    
+
 </Project>
