@@ -7,6 +7,17 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="resources/ErrorSprite.png">
+            <LogicalName>resources.ErrorSprite.png</LogicalName>
+        </EmbeddedResource>
+        <EmbeddedResource Include="resources/WarningSprite.png">
+            <LogicalName>resources.WarningSprite.png</LogicalName>
+        </EmbeddedResource>
+        <EmbeddedResource Include="resources/LoadingSprite.png">
+            <LogicalName>resources.LoadingSprite.png</LogicalName>
+        </EmbeddedResource>
+    </ItemGroup>
+    <ItemGroup>
         <PackageReference Include="Evaisa-LethalLib" Version="0.16.1" Private="False"/>
         <PackageReference Include="IAmBatby-LethalLevelLoader" Version="1.3.10" Private="False"/>
         <PackageReference Include="TeamBMX.LobbyCompatibility" Version="1.0.1" Private="False"/>
