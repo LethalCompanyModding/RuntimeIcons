@@ -100,15 +100,6 @@ public static class TextureUtils
             pixels[i] = color;
         }
     }
-
-    public static bool IsTransparent(this Texture2D tex)
-    {
-        for (var x = 0; x < tex.width; x++)
-        for (var y = 0; y < tex.height; y++)
-            if (tex.GetPixel(x, y).a != 0)
-                return false;
-        return true;
-    }
     
     public static long GetTransparentCount(this Texture2D tex)
     {

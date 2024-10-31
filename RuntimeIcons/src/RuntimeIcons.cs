@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -7,6 +8,7 @@ using MonoMod.RuntimeDetour;
 using RuntimeIcons.Components;
 using RuntimeIcons.Config;
 using RuntimeIcons.Dependency;
+using RuntimeIcons.Utils;
 using UnityEngine;
 using UnityEngine.Rendering.HighDefinition;
 using LogType = VertexLibrary.LogType;
@@ -24,6 +26,10 @@ namespace RuntimeIcons
     {
         internal static readonly ISet<Hook> Hooks = new HashSet<Hook>();
         internal static readonly Harmony Harmony = new Harmony(GUID);
+        
+        public static Sprite LoadingSprite { get; private set; }
+        public static Sprite WarningSprite { get; private set; }
+        public static Sprite ErrorSprite { get; private set; }
 
         public static RuntimeIcons INSTANCE { get; private set; }
 
@@ -73,6 +79,10 @@ namespace RuntimeIcons
                 Log.LogInfo("Preparing Stage");
                 
                 SetStage();
+                
+                Log.LogInfo("Loading Icons");
+                
+                LoadIcons();
 
                 Log.LogInfo("Patching Methods");
 
@@ -214,6 +224,19 @@ namespace RuntimeIcons
             lightData3.fadeDistance = 10000;
             lightData3.innerSpotPercent = 82.7f;
             lightData3.intensity = 30f;
+        }
+
+        private void LoadIcons()
+        {
+            var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LoadingSprite.png");
+            LoadingSprite = SpriteUtils.GetSprite(stream);
+            LoadingSprite.name = $"{nameof(RuntimeIcons)}.Loading";
+            stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("WarningSprite.png");
+            WarningSprite = SpriteUtils.GetSprite(stream);
+            WarningSprite.name = $"{nameof(RuntimeIcons)}.Warning";
+            stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("ErrorSprite.png");
+            ErrorSprite = SpriteUtils.GetSprite(stream);
+            ErrorSprite.name = $"{nameof(RuntimeIcons)}.Error";
         }
     }
 }
