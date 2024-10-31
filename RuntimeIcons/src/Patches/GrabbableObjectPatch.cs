@@ -16,13 +16,11 @@ namespace RuntimeIcons.Patches;
 [HarmonyPatch]
 public static class GrabbableObjectPatch
 {
-
-    public static Sprite BrokenSprite { get; private set; }
-    public static Sprite BrokenSprite2 { get; private set; }
-
     internal static bool ItemHasIcon(Item item)
     {
         if (!item.itemIcon)
+            return false;
+        if (item.itemIcon == RuntimeIcons.LoadingSprite)
             return false;
         if (item.itemIcon.name == "ScrapItemIcon")
             return false;
@@ -37,18 +35,6 @@ public static class GrabbableObjectPatch
     {
         if (ItemHasIcon(__instance.itemProperties)) 
             return;
-
-        if (!BrokenSprite && __instance.itemProperties.itemIcon)
-        {
-            BrokenSprite = Object.Instantiate(__instance.itemProperties.itemIcon);
-            BrokenSprite.name = $"{nameof(RuntimeIcons)}.ScrapItemIcon";
-        }
-        
-        if (!BrokenSprite2 && __instance.itemProperties.itemIcon)
-        {
-            BrokenSprite2 = Object.Instantiate(__instance.itemProperties.itemIcon);
-            BrokenSprite.name = $"{nameof(RuntimeIcons)}.ScrapItemIcon2";
-        }
 
         var inList = PluginConfig.ItemList.Contains(__instance.itemProperties.itemName);
         
@@ -77,6 +63,11 @@ public static class GrabbableObjectPatch
             yield break;
         
         ComputeSprite(@this);
+        
+        if (@this.itemProperties.itemIcon == RuntimeIcons.LoadingSprite)
+            @this.itemProperties.itemIcon =  RuntimeIcons.WarningSprite;
+        
+        UpdateIconsInHUD(@this.itemProperties);
     }
 
     [HarmonyPostfix]
@@ -86,15 +77,17 @@ public static class GrabbableObjectPatch
         if (!__instance.IsOwner)
             return;
         
-        if (__instance.itemProperties.itemIcon != BrokenSprite)
+        if (__instance.itemProperties.itemIcon != RuntimeIcons.WarningSprite)
             return;
         
         RuntimeIcons.Log.LogInfo($"Attempting to refresh BrokenIcon for {__instance.itemProperties.itemName}!");
         
         ComputeSprite(__instance);
 
-        if (__instance.itemProperties.itemIcon == BrokenSprite)
-            __instance.itemProperties.itemIcon = BrokenSprite2;
+        if (__instance.itemProperties.itemIcon == RuntimeIcons.LoadingSprite)
+            __instance.itemProperties.itemIcon =  RuntimeIcons.ErrorSprite;
+        
+        UpdateIconsInHUD(__instance.itemProperties);
     }
     
 
@@ -102,6 +95,10 @@ public static class GrabbableObjectPatch
     internal static void ComputeSprite(GrabbableObject grabbableObject)
     {
         RuntimeIcons.Log.LogWarning($"Computing {grabbableObject.itemProperties.itemName} icon");
+        
+        grabbableObject.itemProperties.itemIcon = RuntimeIcons.LoadingSprite;
+        
+        UpdateIconsInHUD(@grabbableObject.itemProperties);
 
         if (PluginConfig.FileOverrides.TryGetValue(grabbableObject.itemProperties.itemName,
                 out var filename))
@@ -113,23 +110,38 @@ public static class GrabbableObjectPatch
                 if (File.Exists(filename))
                 {
                     var fileData = File.ReadAllBytes(filename);
-                    var texture = new Texture2D(128, 128);
-                    texture.LoadImage(fileData);
 
+                    var sprite = SpriteUtils.GetSprite(fileData);
+                    
+                    
+                    
+                    var texture = sprite.texture;
                     if (texture.width != texture.height)
                     {
+                        Object.Destroy(sprite);
                         Object.Destroy(texture);
                         RuntimeIcons.Log.LogError($"Expected Icon {filename} was not square!");
                     }
-                    else if (!texture.IsTransparent())
+                    else
                     {
-                        var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
-                            new Vector2(texture.width / 2f, texture.height / 2f));
-                        sprite.name = $"{nameof(RuntimeIcons)}.{grabbableObject.itemProperties.itemName}";
-                        grabbableObject.itemProperties.itemIcon = sprite;
-                        UpdateIconsInHUD(grabbableObject.itemProperties);
-                        RuntimeIcons.Log.LogInfo($"{grabbableObject.itemProperties.itemName} now has a new icon | 1");
-                        return;
+                        var transparentCount = texture.GetTransparentCount();
+                        var totalPixels = texture.width * texture.height;
+                        var ratio = (float)transparentCount / (float)totalPixels;
+
+                        if (ratio <= PluginConfig.TransparencyRatio)
+                        {
+                            sprite.name = $"{nameof(RuntimeIcons)}.{grabbableObject.itemProperties.itemName}";
+                            grabbableObject.itemProperties.itemIcon = sprite;
+                            UpdateIconsInHUD(grabbableObject.itemProperties);
+                            RuntimeIcons.Log.LogInfo($"{grabbableObject.itemProperties.itemName} now has a new icon | 1");
+                            return;
+                        }
+                        else
+                        {
+                            Object.Destroy(sprite);
+                            Object.Destroy(texture);
+                            RuntimeIcons.Log.LogError($"Expected Icon {filename} was {ratio*100}% Empty!");
+                        }
                     }
                 }
             }
@@ -215,10 +227,8 @@ public static class GrabbableObjectPatch
             else
             {
                 RuntimeIcons.Log.LogError($"{grabbableObject.itemProperties.itemName} Generated {ratio*100}% Empty Sprite!");
-                grabbableObject.itemProperties.itemIcon = BrokenSprite;
             }
 
-            UpdateIconsInHUD(grabbableObject.itemProperties);
         }
         finally
         {
@@ -321,7 +331,7 @@ public static class GrabbableObjectPatch
 
     }
 
-    private static void UpdateIconsInHUD(Item item)
+    internal static void UpdateIconsInHUD(Item item)
     {
         if (!GameNetworkManager.Instance || !GameNetworkManager.Instance.localPlayerController)
             return;

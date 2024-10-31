@@ -86,6 +86,8 @@ internal static class PluginConfig
                         return;
                             
                     GrabbableObjectPatch.ComputeSprite(StartOfRound.Instance.localPlayerController.currentlyHeldObjectServer);
+                    
+                    GrabbableObjectPatch.UpdateIconsInHUD(StartOfRound.Instance.localPlayerController.currentlyHeldObjectServer.itemProperties);
                 });
             LethalConfigProxy.AddButton("Debug", "Render All Loaded Items", "Finds all items in the resources of the game to render them. Must be in a game.", "Render All Items",
                 () =>
@@ -175,7 +177,7 @@ internal static class PluginConfig
 
         foreach (var item in items)
         {
-            if (item.spawnPrefab == null)
+            if (!item.spawnPrefab)
                 continue;
 
             var originalIcon = item.itemIcon;
@@ -199,7 +201,7 @@ internal static class PluginConfig
                 Object.Destroy(spawnedItem);
             }
 
-            if (item.itemIcon != null && item.itemIcon != GrabbableObjectPatch.BrokenSprite)
+            if (item.itemIcon && item.itemIcon != RuntimeIcons.LoadingSprite)
                 renderedItems.Add(item);
 
             item.itemIcon = originalIcon;
