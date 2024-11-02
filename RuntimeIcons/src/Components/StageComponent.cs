@@ -59,6 +59,7 @@ public class StageComponent : MonoBehaviour
     public int CullingMask => _camera.cullingMask;
 
     public Transform StagedTransform { get; private set; }
+    public GrabbableObject StagedItem { get; private set; }
     
     private TransformMemory Memory { get;  set; }
 
@@ -154,18 +155,10 @@ public class StageComponent : MonoBehaviour
         SetObjectOnStage(targetGameObject.transform);
     }
     
-    public void SetObjectOnStage(GameObject targetGameObject, Quaternion rotation)
+    public void SetObjectOnStage(GrabbableObject targetItem)
     {
-        SetObjectOnStage(targetGameObject.transform);
-    }
-
-    public void SetObjectOnStage(Transform targetTransform)
-    {
-        SetObjectOnStage(targetTransform, targetTransform.rotation);
-    }
-    
-    public void SetObjectOnStage(Transform targetTransform, Quaternion rotation)
-    {
+        var targetTransform = targetItem.transform;
+        
         if (StagedTransform && StagedTransform != targetTransform)
             throw new InvalidOperationException("An Object is already on stage!");
         
@@ -483,10 +476,89 @@ public class StageComponent : MonoBehaviour
         angleMax = Mathf.Atan(tangentMax) * Mathf.Rad2Deg;
     }
 
-}
+    public void FindOptimalRotation()
+    {
+        var pivotTransform = PivotTransform;
+        pivotTransform.rotation = Quaternion.identity;
+        
+        pivotTransform.rotation = Quaternion.identity;
+        
+        var executionOptions = new ExecutionOptions()
+        {
+            VertexCache = VertexCache,
+            CullingMask = CullingMask,
+            LogHandler = RuntimeIcons.VerboseMeshLog
+        };
+        
+        if (!pivotTransform.TryGetBounds(out var bounds, executionOptions))
+            throw new InvalidOperationException("This object has no Renders!");
 
-public enum MarginType
-{
-    Fraction,
-    Pixels,
+        if (bounds.size == Vector3.zero)
+            throw new InvalidOperationException("This object has no Bounds!");
+
+        if (bounds.size.y < bounds.size.x / 2f && bounds.size.y <  bounds.size.z / 2f)
+        {
+            if (bounds.size.z < bounds.size.x * 0.5f)
+            {
+                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -45 y | 1");
+                pivotTransform.Rotate(Vector3.up, -45, Space.World);
+            }
+            else if (bounds.size.z < bounds.size.x * 0.85f)
+            {
+                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -90 y | 2");
+                pivotTransform.Rotate(Vector3.up, -90, Space.World);
+            }
+            else if (bounds.size.x < bounds.size.z * 0.5f)
+            {
+                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -90 y | 3");
+                pivotTransform.Rotate(Vector3.up, -45, Space.World);
+            }
+            
+            RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -80 x");
+            pivotTransform.Rotate(Vector3.right, -80, Space.World);
+            
+            RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated 15 y");
+            pivotTransform.Rotate(Vector3.up, 15, Space.World);
+        }
+        else
+        {
+            if (bounds.size.x < bounds.size.z * 0.85f)
+            {
+                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -25 x | 1");
+                pivotTransform.Rotate(Vector3.right, -25, Space.World);
+                
+                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -45 y | 1");
+                pivotTransform.Rotate(Vector3.up, -45, Space.World);
+            }
+            else if ((Mathf.Abs(bounds.size.y - bounds.size.x) / bounds.size.x < 0.01f) && bounds.size.x < bounds.size.z * 0.85f)
+            {
+                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -25 x | 2");
+                pivotTransform.Rotate(Vector3.right, -25, Space.World);
+                
+                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated 45 y | 2");
+                pivotTransform.Rotate(Vector3.up, 45, Space.World);
+            }
+            else if ((Mathf.Abs(bounds.size.y - bounds.size.z) / bounds.size.z < 0.01f) && bounds.size.z < bounds.size.x * 0.85f)
+            {
+                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated 25 z | 3");
+                pivotTransform.Rotate(Vector3.forward, 25, Space.World);
+                
+                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -45 y | 3");
+                pivotTransform.Rotate(Vector3.up, -45, Space.World);
+            }
+            else if (bounds.size.y < bounds.size.x / 2f || bounds.size.x < bounds.size.y / 2f)
+            {
+                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated 45 z | 4");
+                pivotTransform.Rotate(Vector3.forward, 45, Space.World);
+                
+                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -25 x | 4");
+                pivotTransform.Rotate(Vector3.right, -25, Space.World);
+            }
+            else
+            {
+                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -25 x | 5");
+                pivotTransform.Rotate(Vector3.right, -25, Space.World);
+            }
+        }
+    }
 }

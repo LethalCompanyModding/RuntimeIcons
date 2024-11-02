@@ -4,12 +4,9 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using BepInEx;
 using HarmonyLib;
-using RuntimeIcons.Components;
 using RuntimeIcons.Config;
 using RuntimeIcons.Utils;
 using UnityEngine;
-using VertexLibrary;
-using Object = UnityEngine.Object;
 
 namespace RuntimeIcons.Patches;
 
@@ -26,6 +23,7 @@ public static class GrabbableObjectPatch
             return false;
         if (item.itemIcon.name == "ScrapItemIcon2")
             return false;
+        
         return true;
     }
     
@@ -94,65 +92,23 @@ public static class GrabbableObjectPatch
     [MethodImpl(MethodImplOptions.NoInlining)]
     internal static void ComputeSprite(GrabbableObject grabbableObject)
     {
-        RuntimeIcons.Log.LogWarning($"Computing {grabbableObject.itemProperties.itemName} icon");
+        var key = GetPathForItem(grabbableObject.itemProperties).ToLower();
+
+        RuntimeIcons.OverrideMap.TryGetValue(key, out var overrideHolder);
+        
+        RuntimeIcons.Log.LogWarning($"Computing {key} icon");
         
         grabbableObject.itemProperties.itemIcon = RuntimeIcons.LoadingSprite;
         
-        UpdateIconsInHUD(@grabbableObject.itemProperties);
+        UpdateIconsInHUD(grabbableObject.itemProperties);
 
-        if (PluginConfig.FileOverrides.TryGetValue(grabbableObject.itemProperties.itemName,
-                out var filename))
+        if (overrideHolder!=null && overrideHolder.OverrideSprite)
         {
-            
-            RuntimeIcons.Log.LogWarning($"Assigning {filename} to {grabbableObject.itemProperties.itemName}");
-            try
-            {
-                if (File.Exists(filename))
-                {
-                    var fileData = File.ReadAllBytes(filename);
-
-                    var sprite = SpriteUtils.GetSprite(fileData);
-                    
-                    
-                    
-                    var texture = sprite.texture;
-                    if (texture.width != texture.height)
-                    {
-                        Object.Destroy(sprite);
-                        Object.Destroy(texture);
-                        RuntimeIcons.Log.LogError($"Expected Icon {filename} was not square!");
-                    }
-                    else
-                    {
-                        var transparentCount = texture.GetTransparentCount();
-                        var totalPixels = texture.width * texture.height;
-                        var ratio = (float)transparentCount / (float)totalPixels;
-
-                        if (ratio <= PluginConfig.TransparencyRatio)
-                        {
-                            sprite.name = $"{nameof(RuntimeIcons)}.{grabbableObject.itemProperties.itemName}";
-                            grabbableObject.itemProperties.itemIcon = sprite;
-                            UpdateIconsInHUD(grabbableObject.itemProperties);
-                            RuntimeIcons.Log.LogInfo($"{grabbableObject.itemProperties.itemName} now has a new icon | 1");
-                            return;
-                        }
-                        else
-                        {
-                            Object.Destroy(sprite);
-                            Object.Destroy(texture);
-                            RuntimeIcons.Log.LogError($"Expected Icon {filename} was {ratio*100}% Empty!");
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                RuntimeIcons.Log.LogError($"Failed to read {filename}:\n{ex}");
-            }
-            finally
-            {
-                RuntimeIcons.Log.LogWarning($"Fallback to Staged image for {grabbableObject.itemProperties.itemName}");
-            }
+            RuntimeIcons.Log.LogWarning($"Using static icon from {overrideHolder.Source} for {key}");
+            grabbableObject.itemProperties.itemIcon = overrideHolder.OverrideSprite;
+            UpdateIconsInHUD(grabbableObject.itemProperties);
+            RuntimeIcons.Log.LogInfo($"{key} now has a new icon | 1");
+            return;
         }
 
         //we're rendering!
@@ -162,17 +118,29 @@ public static class GrabbableObjectPatch
         try
         {
             var rotation = Quaternion.Euler(grabbableObject.itemProperties.restingRotation.x, grabbableObject.itemProperties.floorYOffset + 90f, grabbableObject.itemProperties.restingRotation.z);
+
+            if (overrideHolder is { ItemRotation: not null })
+            {
+                rotation = Quaternion.Euler(overrideHolder.ItemRotation.Value + new Vector3(0, 90f, 0));
+            }
             
-            RuntimeIcons.Log.LogInfo($"Setting stage for {grabbableObject.NetworkObject.gameObject.name}");
+            RuntimeIcons.Log.LogInfo($"Setting stage for {key}");
             
-            stage.SetObjectOnStage(grabbableObject.NetworkObject.gameObject);
+            stage.SetObjectOnStage(grabbableObject);
             
             stage.CenterObjectOnPivot(rotation);
             
             RuntimeIcons.Log.LogInfo($"StagedObject offset {stage.StagedTransform.localPosition} rotation {stage.StagedTransform.localRotation.eulerAngles}");
 
-            FindOptimalRotation(stage, grabbableObject);
-            
+            if (overrideHolder is { StageRotation: not null })
+            {
+                stage.PivotTransform.rotation = Quaternion.Euler(overrideHolder.StageRotation.Value);
+            }
+            else
+            {
+                stage.FindOptimalRotation();
+            }
+
             RuntimeIcons.Log.LogInfo($"Stage rotation {stage.PivotTransform.rotation.eulerAngles}");
             
             stage.PrepareCameraForShot();
@@ -185,31 +153,15 @@ public static class GrabbableObjectPatch
             
             if (PluginConfig.DumpToCache)
             {
-
-                var outputName = grabbableObject.itemProperties.itemName;
-                var sanitizedName = String.Join("_",
-                        outputName.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries))
-                    .TrimEnd('.');
+                var outputPath = GetPathForItem(grabbableObject.itemProperties);
+                var directory = Path.GetDirectoryName(outputPath) ?? "";
+                var filename = Path.GetFileName(outputPath);
                 
-                var subFolder = "";
+                texture.SavePNG(filename,
+                    Path.Combine(Paths.CachePath, $"{nameof(RuntimeIcons)}.PNG", directory));
 
-                if (StartOfRoundPatch.ItemModMap.TryGetValue(grabbableObject.itemProperties, out var modTag))
-                {
-                    if (!modTag.Item1.Equals("Vanilla"))
-                    {
-                        var sanitizedMod = String.Join("_",
-                                modTag.Item2.Split(Path.GetInvalidPathChars(), StringSplitOptions.RemoveEmptyEntries))
-                            .TrimEnd('.');
-                        
-                        subFolder = $"{modTag.Item1}{Path.DirectorySeparatorChar}{sanitizedMod}";
-                    }
-                }
-                
-                texture.SavePNG(sanitizedName,
-                    Path.Combine(Paths.CachePath, $"{nameof(RuntimeIcons)}.PNG", subFolder));
-
-                texture.SaveEXR(sanitizedName,
-                    Path.Combine(Paths.CachePath, $"{nameof(RuntimeIcons)}.EXR", subFolder));
+                texture.SaveEXR(filename,
+                    Path.Combine(Paths.CachePath, $"{nameof(RuntimeIcons)}.EXR", directory));
             }
 
             var transparentCount = texture.GetTransparentCount();
@@ -220,13 +172,13 @@ public static class GrabbableObjectPatch
             {
                 var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
                     new Vector2(texture.width / 2f, texture.height / 2f));
-                sprite.name = $"{nameof(RuntimeIcons)}.{grabbableObject.itemProperties.itemName}";
+                sprite.name = sprite.texture.name = $"{nameof(RuntimeIcons)}.{grabbableObject.itemProperties.itemName}";
                 grabbableObject.itemProperties.itemIcon = sprite;
-                RuntimeIcons.Log.LogInfo($"{grabbableObject.itemProperties.itemName} now has a new icon | 2");
+                RuntimeIcons.Log.LogInfo($"{key} now has a new icon | 2");
             }
             else
             {
-                RuntimeIcons.Log.LogError($"{grabbableObject.itemProperties.itemName} Generated {ratio*100}% Empty Sprite!");
+                RuntimeIcons.Log.LogError($"{key} Generated {ratio*100}% Empty Sprite!");
             }
 
         }
@@ -234,101 +186,6 @@ public static class GrabbableObjectPatch
         {
             stage.ResetStage();
         }
-    }
-
-    public static void FindOptimalRotation(StageComponent stage, GrabbableObject grabbable)
-    {
-        var pivotTransform = stage.PivotTransform;
-        pivotTransform.rotation = Quaternion.identity;
-        
-        if (PluginConfig.RotationOverrides.TryGetValue(grabbable.itemProperties.itemName,
-                out var rotations))
-        {
-            pivotTransform.Rotate(rotations, Space.World);
-        }
-        else
-        {
-            pivotTransform.rotation = Quaternion.identity;
-            
-            var executionOptions = new ExecutionOptions()
-            {
-                VertexCache = stage.VertexCache,
-                CullingMask = stage.CullingMask,
-                LogHandler = RuntimeIcons.VerboseMeshLog
-            };
-            
-            if (!pivotTransform.TryGetBounds(out var bounds, executionOptions))
-                throw new InvalidOperationException("This object has no Renders!");
-
-            if (bounds.size == Vector3.zero)
-                throw new InvalidOperationException("This object has no Bounds!");
-
-            if (bounds.size.y < bounds.size.x / 2f && bounds.size.y <  bounds.size.z / 2f)
-            {
-                if (bounds.size.z < bounds.size.x * 0.5f)
-                {
-                    RuntimeIcons.Log.LogDebug($"{grabbable.itemProperties.itemName} rotated -45 y | 1");
-                    pivotTransform.Rotate(Vector3.up, -45, Space.World);
-                }
-                else if (bounds.size.z < bounds.size.x * 0.85f)
-                {
-                    RuntimeIcons.Log.LogDebug($"{grabbable.itemProperties.itemName} rotated -90 y | 2");
-                    pivotTransform.Rotate(Vector3.up, -90, Space.World);
-                }
-                else if (bounds.size.x < bounds.size.z * 0.5f)
-                {
-                    RuntimeIcons.Log.LogDebug($"{grabbable.itemProperties.itemName} rotated -90 y | 3");
-                    pivotTransform.Rotate(Vector3.up, -45, Space.World);
-                }
-                
-                RuntimeIcons.Log.LogDebug($"{grabbable.itemProperties.itemName} rotated -80 x");
-                pivotTransform.Rotate(Vector3.right, -80, Space.World);
-                
-                RuntimeIcons.Log.LogDebug($"{grabbable.itemProperties.itemName} rotated 15 y");
-                pivotTransform.Rotate(Vector3.up, 15, Space.World);
-            }
-            else
-            {
-                if (bounds.size.x < bounds.size.z * 0.85f)
-                {
-                    RuntimeIcons.Log.LogDebug($"{grabbable.itemProperties.itemName} rotated -25 x | 1");
-                    pivotTransform.Rotate(Vector3.right, -25, Space.World);
-                    
-                    RuntimeIcons.Log.LogDebug($"{grabbable.itemProperties.itemName} rotated -45 y | 1");
-                    pivotTransform.Rotate(Vector3.up, -45, Space.World);
-                }
-                else if ((Mathf.Abs(bounds.size.y - bounds.size.x) / bounds.size.x < 0.01f) && bounds.size.x < bounds.size.z * 0.85f)
-                {
-                    RuntimeIcons.Log.LogDebug($"{grabbable.itemProperties.itemName} rotated -25 x | 2");
-                    pivotTransform.Rotate(Vector3.right, -25, Space.World);
-                    
-                    RuntimeIcons.Log.LogDebug($"{grabbable.itemProperties.itemName} rotated 45 y | 2");
-                    pivotTransform.Rotate(Vector3.up, 45, Space.World);
-                }
-                else if ((Mathf.Abs(bounds.size.y - bounds.size.z) / bounds.size.z < 0.01f) && bounds.size.z < bounds.size.x * 0.85f)
-                {
-                    RuntimeIcons.Log.LogDebug($"{grabbable.itemProperties.itemName} rotated 25 z | 3");
-                    pivotTransform.Rotate(Vector3.forward, 25, Space.World);
-                    
-                    RuntimeIcons.Log.LogDebug($"{grabbable.itemProperties.itemName} rotated -45 y | 3");
-                    pivotTransform.Rotate(Vector3.up, -45, Space.World);
-                }
-                else if (bounds.size.y < bounds.size.x / 2f || bounds.size.x < bounds.size.y / 2f)
-                {
-                    RuntimeIcons.Log.LogDebug($"{grabbable.itemProperties.itemName} rotated 45 z | 4");
-                    pivotTransform.Rotate(Vector3.forward, 45, Space.World);
-                    
-                    RuntimeIcons.Log.LogDebug($"{grabbable.itemProperties.itemName} rotated -25 x | 4");
-                    pivotTransform.Rotate(Vector3.right, -25, Space.World);
-                }
-                else
-                {
-                    RuntimeIcons.Log.LogDebug($"{grabbable.itemProperties.itemName} rotated -25 x | 5");
-                    pivotTransform.Rotate(Vector3.right, -25, Space.World);
-                }
-            }
-        }
-
     }
 
     internal static void UpdateIconsInHUD(Item item)
@@ -346,5 +203,23 @@ public static class GrabbableObjectPatch
                 continue;
             itemSlotIcons[i].sprite = item.itemIcon;
         }
+    }
+
+    private static string GetPathForItem(Item item)
+    {
+        if (!StartOfRoundPatch.ItemModMap.TryGetValue(item, out var modTag))
+            modTag = new Tuple<string, string>("Unknown", "");
+
+        var cleanName = String.Join("_",
+                item.itemName.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries))
+            .TrimEnd('.');
+        
+        var cleanMod = String.Join("_",
+                modTag.Item2.Split(Path.GetInvalidPathChars(), StringSplitOptions.RemoveEmptyEntries))
+            .TrimEnd('.');
+
+        var path = Path.Combine(modTag.Item1, cleanMod, cleanName);
+
+        return path;
     }
 }
