@@ -1,0 +1,276 @@
+{
+  "Vanilla\\Flashlight": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [90, 0, 90]
+  },
+  "Vanilla\\Jetpack": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [45, 0, 0]
+  },
+  "Vanilla\\Key": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [180, 0, 90]
+  },
+  "Vanilla\\Apparatus": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, 0, 135]
+  },
+  "Vanilla\\Pro-flashlight": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [90, 0, 90]
+  },
+  "Vanilla\\Shovel": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, 0, -90]
+  },
+  "Vanilla\\Stun grenade": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, 0, 90]
+  },
+  "Vanilla\\Extension ladder": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, 90, 0]
+  },
+  "Vanilla\\TZP-Inhalant": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, 0, -90]
+  },
+  "Vanilla\\Zap gun": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [95, 0, 90]
+  },
+  "Vanilla\\Magic 7 ball": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, 0, 0]
+  },
+  "Vanilla\\Airhorn": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, -90, 270],
+    "stage_rotation": [-45, 90, -80]
+  },
+  "Vanilla\\Big bolt": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-21, 0, 0]
+  },
+  "Vanilla\\Bottles": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, 0]
+  },
+  "Vanilla\\Brush": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [90, 180, 0]
+  },
+  "Vanilla\\Candy": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [90, -135, 0]
+  },
+  "Vanilla\\Cash register": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, -90, 40]
+  },
+  "Vanilla\\Chemical jug": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, 0]
+  },
+  "Vanilla\\Clown horn": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, -30, 0]
+  },
+  "Vanilla\\Large axle": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [7, 180, 0]
+  },
+  "Vanilla\\Teeth": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, 0]
+  },
+  "Vanilla\\Dust pan": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 180, 0]
+  },
+  "Vanilla\\Egg beater": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [90, 180, 0]
+  },
+  "Vanilla\\V-type engine": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, 0]
+  },
+  "Vanilla\\Plastic fish": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-45, 0, 90]
+  },
+  "Vanilla\\Laser pointer": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, 0, 0]
+  },
+  "Vanilla\\Gold bar": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, -90]
+  },
+  "Vanilla\\Hairdryer": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, -90, -90]
+  },
+  "Vanilla\\Magnifying glass": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, -45, -90]
+  },
+  "Vanilla\\Cookie mold pan": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, 90]
+  },
+  "Vanilla\\Mug": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, 0]
+  },
+  "Vanilla\\Perfume bottle": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, 0]
+  },
+  "Vanilla\\Old phone": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 180, -90]
+  },
+  "Vanilla\\Jar of pickles": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, 0]
+  },
+  "Vanilla\\Pill bottle": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, 0]
+  },
+  "Vanilla\\Remote": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 180, 0]
+  },
+  "Vanilla\\Ring": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, -90, 90]
+  },
+  "Vanilla\\Toy robot": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, 0],
+    "stage_rotation": [-15, 180, 0]
+  },
+  "Vanilla\\Rubber Ducky": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, 90]
+  },
+  "Vanilla\\Steering wheel": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, 0]
+  },
+  "Vanilla\\Toothpaste": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, 0]
+  },
+  "Vanilla\\Hive": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [7, 0, 0]
+  },
+  "Vanilla\\Radar-booster": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, 0, 0]
+  },
+  "Vanilla\\Shotgun": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [180, 90, -5]
+  },
+  "Vanilla\\Ammo": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, 0, 90]
+  },
+  "Vanilla\\Spray paint": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, 0, 195]
+  },
+  "Vanilla\\Homemade flashbang": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, 0, 90]
+  },
+  "Vanilla\\Gift": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 0, 0]
+  },
+  "Vanilla\\Flask": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [25, 0, 0]
+  },
+  "Vanilla\\Tragedy": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 90, 0]
+  },
+  "Vanilla\\Comedy": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 90, 0]
+  },
+  "Vanilla\\Whoopie cushion": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [-90, 180, 0],
+    "stage_rotation": [-75, 0, 0]
+  },
+  "Vanilla\\Zed Dog": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": [0, -90, 0]
+  },
+  "Unknown\\Sticky note": {
+    "priority": -1,
+    "icon_path": null,
+    "item_rotation": null,
+    "stage_rotation": [0, 105, -90]
+  }
+}

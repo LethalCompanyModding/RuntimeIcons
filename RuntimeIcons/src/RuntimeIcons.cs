@@ -1,17 +1,22 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
 using MonoMod.RuntimeDetour;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using RuntimeIcons.Components;
 using RuntimeIcons.Config;
 using RuntimeIcons.Dependency;
+using RuntimeIcons.Patches;
 using RuntimeIcons.Utils;
 using UnityEngine;
 using UnityEngine.Rendering.HighDefinition;
 using LogType = VertexLibrary.LogType;
+using Object = UnityEngine.Object;
 
 namespace RuntimeIcons
 {
@@ -40,6 +45,8 @@ namespace RuntimeIcons
         internal static ManualLogSource Log;
 
         internal static StageComponent CameraStage;
+
+        internal static Dictionary<string, OverrideHolder> OverrideMap = new();
 
         internal static void VerboseMeshLog(LogType logLevel, Func<string> message)
         {
@@ -84,8 +91,13 @@ namespace RuntimeIcons
                 
                 LoadIcons();
 
+                Log.LogInfo("Loading Overrides");
+                
+                LoadOverrides();
+                
                 Log.LogInfo("Patching Methods");
 
+                StartOfRoundPatch.Init();
                 Harmony.PatchAll();
 
                 Log.LogInfo(NAME + " v" + VERSION + " Loaded!");
@@ -237,6 +249,161 @@ namespace RuntimeIcons
             stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("ErrorSprite.png");
             ErrorSprite = SpriteUtils.GetSprite(stream);
             ErrorSprite.name = $"{nameof(RuntimeIcons)}.Error";
+        }
+
+        private void LoadOverrides()
+        {
+            foreach (var directory in Directory.EnumerateDirectories(Paths.PluginPath, nameof(RuntimeIcons),
+                         SearchOption.AllDirectories))
+            {
+
+                var relativeDir = Path.GetRelativePath(Paths.BepInExRootPath, directory);
+
+                var source = Path.GetFileName(Path.GetDirectoryName(directory));
+                
+                Log.LogDebug($"Searching {relativeDir}");
+                
+                Dictionary<string, OverrideHolder> localMap = new();
+                
+                var iconsFolder = Path.Combine(directory, "icons");
+                if (Directory.Exists(iconsFolder))
+                {
+                    Log.LogDebug($"Found {relativeDir}{Path.DirectorySeparatorChar}icons{Path.DirectorySeparatorChar}");
+                    
+                    foreach (var icon in Directory.EnumerateFiles(iconsFolder, "*.png", SearchOption.AllDirectories))
+                    {
+                        var key = Path.GetRelativePath(iconsFolder, Path.ChangeExtension(icon, null)).ToLower();
+                        var itemName = Path.GetFileNameWithoutExtension(icon);
+                        
+                        Log.LogDebug($"Reading {key}");
+
+                        byte[] data = File.ReadAllBytes(icon);
+
+                        Sprite sprite = SpriteUtils.GetSprite(data);
+                        
+                        var texture = sprite.texture;
+                        if (texture.width != texture.height)
+                        {
+                            Destroy(sprite);
+                            Destroy(texture);
+                            Log.LogError($"Expected Icon {itemName}.png was not square!");
+                        }else
+                        {
+                            sprite.name = sprite.texture.name = $"{nameof(RuntimeIcons)}.{itemName}";
+                            var holder = new OverrideHolder();
+                            holder.OverrideSprite = sprite;
+                            holder.Source = source;
+                            localMap[key] = holder;
+                        }
+                    }
+                }
+
+                var overridesPath = Path.Combine(directory, "overrides.json");
+
+                if (File.Exists(overridesPath))
+                {
+                    
+                    Log.LogDebug($"Found {relativeDir}{Path.DirectorySeparatorChar}overrides.json");
+                    
+                    using (StreamReader file = File.OpenText(overridesPath))
+                    using (JsonTextReader reader = new JsonTextReader(file))
+                    {
+                        JObject root = (JObject)JToken.ReadFrom(reader);
+
+                        foreach (var property in root.Properties())
+                        {
+                            var key = property.Name.ToLower();
+
+                            if (property.Value.Type != JTokenType.Object)
+                            {
+                                Log.LogWarning(
+                                    $"{Path.GetRelativePath(Paths.BepInExRootPath, overridesPath)}: Key {key} has wrong type={property.Value.Type} Expected={JTokenType.Object}");
+                                continue;
+                            }
+
+                            if (!localMap.TryGetValue(key, out var holder))
+                            {
+                                holder = new OverrideHolder();
+                                holder.Source = source;
+                                localMap[key] = holder;
+                            }
+
+                            JObject value = (JObject)property.Value;
+
+                            JToken token;
+
+                            if (value.TryGetValue("priority", out token) &&
+                                token.Type == JTokenType.Integer)
+                            {
+                                holder.Priority = token.Value<int>();
+                            }
+                            
+                            if (value.TryGetValue("item_rotation", out token) &&
+                                token.Type == JTokenType.Array)
+                            {
+                                //TODO: wrap in try catch and ignore errors!
+                                var array = (List<float>)JsonConvert.DeserializeObject(token.ToString(), typeof(List<float>));
+                                if (array.Count == 3)
+                                {
+                                    holder.ItemRotation = new Vector3(array[0], array[1], array[2]);
+                                }
+                            }
+                            
+                            if (value.TryGetValue("stage_rotation", out token) &&
+                                token.Type == JTokenType.Array)
+                            {
+                                var array = (List<float>)JsonConvert.DeserializeObject(token.ToString(), typeof(List<float>));
+                                if (array.Count == 3)
+                                {
+                                    holder.StageRotation = new Vector3(array[0], array[1], array[2]);
+                                }
+                            }
+                            
+                            if (value.TryGetValue("icon_path", out token) &&
+                                token.Type == JTokenType.String)
+                            {
+                                var overrideKey = token.Value<string>().ToLower();
+
+                                if (localMap.TryGetValue(overrideKey, out var target))
+                                {
+                                    if (target.OverrideSprite)
+                                    {
+                                        holder.OverrideSprite = target.OverrideSprite;
+                                    }
+                                    else
+                                    {
+                                        Log.LogWarning($"Key {overrideKey} is not a file in {source}");
+                                    }
+                                }
+                                else
+                                {
+                                    Log.LogWarning($"Key {overrideKey} does not exist in {source}");
+                                }
+                                
+                            }
+                            
+                        }
+                        
+                    }
+                }
+
+                foreach (var pair in localMap)
+                {
+                    if (!pair.Key.Contains(Path.DirectorySeparatorChar))
+                        continue;
+
+                    if (OverrideMap.TryGetValue(pair.Key, out var old))
+                    {
+                        if (old.Priority > pair.Value.Priority)
+                            continue;
+                    }
+                    
+                    Log.LogDebug($"[{pair.Value.Source}] Overriding {pair.Key} with priority {pair.Value.Priority}");
+
+                    OverrideMap[pair.Key] = pair.Value;
+                }
+
+            }
         }
     }
 }

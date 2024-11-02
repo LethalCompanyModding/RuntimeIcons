@@ -37,6 +37,8 @@ public static class TextureUtils
         directory = Directory.CreateDirectory(directory).FullName;
         filename = filename != "" ? SanitizeFilename(filename) + extension : DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss-ffff") + extension;
         string filepath = Path.Combine(directory, filename);
+        
+        RuntimeIcons.Log.LogDebug($"Saving {filename} to {directory}");
 
         File.WriteAllBytes(filepath, bytes);
 

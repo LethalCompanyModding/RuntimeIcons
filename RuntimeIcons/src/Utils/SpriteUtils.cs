@@ -5,6 +5,7 @@ namespace RuntimeIcons.Utils;
 
 public static class SpriteUtils
 {
+    
     public static Sprite GetSprite(byte[] data)
     {
         var texture = new Texture2D(1, 1);
@@ -29,5 +30,14 @@ public static class SpriteUtils
         
         return Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
             new Vector2(texture.width / 2f, texture.height / 2f));
+    }
+    
+    
+    public class SpriteInfo
+    {
+        public string Source { get; internal set; }
+        
+        
+        
     }
 }
