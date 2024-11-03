@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using RuntimeIcons.Dependency;
+using RuntimeIcons.Patches;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -9,12 +10,12 @@ using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.SceneManagement;
 using VertexLibrary;
 using VertexLibrary.Caches;
+using static UnityEngine.Rendering.HighDefinition.RenderPipelineSettings;
 
 namespace RuntimeIcons.Components;
 
 public class StageComponent : MonoBehaviour
 {
-
     private StageComponent(){}
 
     public IVertexCache VertexCache { get; set; } = VertexesExtensions.GlobalPartialCache;
@@ -38,10 +39,10 @@ public class StageComponent : MonoBehaviour
     private Transform CameraTransform => CameraGo.transform;
     
     private Camera _camera;
-    private HDAdditionalCameraData _cameraSettings;
-    private TransparentRenderTexturePass _cameraPass;
     private GameObject _targetGo;
     private Vector2Int _resolution = new Vector2Int(128, 128);
+
+    private ColorBufferFormat? _originalColorBufferFormat;
 
     public Vector2Int Resolution
     {
@@ -126,30 +127,14 @@ public class StageComponent : MonoBehaviour
         cam.nearClipPlane = 0.1f;
         cam.farClipPlane = 10f;
         cam.enabled = false;
-        
-        // Add a Camera component to the GameObject
-        HDAdditionalCameraData camData = cameraGo.AddComponent<HDAdditionalCameraData>();
-        stageComponent._cameraSettings = camData;
 
-        camData.clearDepth = true;
-        camData.clearColorMode = HDAdditionalCameraData.ClearColorMode.Color;
-        camData.backgroundColorHDR = Color.clear;
-        camData.customRenderingSettings = true;
-        camData.customRenderingSettings = true;
-        camData.renderingPathCustomFrameSettingsOverrideMask.mask[(uint)FrameSettingsField.DecalLayers] = true;
-        camData.renderingPathCustomFrameSettings.SetEnabled(FrameSettingsField.DecalLayers, false);
-
-        var customPassVolume = cameraGo.AddComponent<CustomPassVolume>();
-        customPassVolume.targetCamera = cam;
-        
-        var customPass = (TransparentRenderTexturePass)customPassVolume.AddPassOfType<TransparentRenderTexturePass>();
-        stageComponent._cameraPass = customPass;
-        
-        customPass.targetColorBuffer = CustomPass.TargetBuffer.Custom;
-        customPass.targetDepthBuffer = CustomPass.TargetBuffer.Custom;
-        customPass.clearFlags = ClearFlag.All;
-        
         return stageComponent;
+    }
+
+    private void Awake()
+    {
+        HDRenderPipelinePatch.beginCameraRendering += BeginCameraRendering;
+        RenderPipelineManager.endCameraRendering += EndCameraRendering;
     }
 
     public void SetObjectOnStage(GameObject targetGameObject)
@@ -330,9 +315,8 @@ public class StageComponent : MonoBehaviour
         // Get a temporary render texture and render the camera
 
         var destTexture = RenderTexture.GetTemporary(Resolution.x, Resolution.y, 8, GraphicsFormat.R16G16B16A16_SFloat);
-        var dummyTexture = RenderTexture.GetTemporary(Resolution.x, Resolution.y, 0, RenderTextureFormat.R8);
-        _camera.targetTexture = dummyTexture;
-        _cameraPass.targetTexture = destTexture;
+        _camera.targetTexture = destTexture;
+
         using (new IsolateStageLights(PivotGo))
         {
             //Turn on the stage Lights
@@ -363,13 +347,57 @@ public class StageComponent : MonoBehaviour
         
         // Clean up after ourselves
         _camera.targetTexture = null;
-        RenderTexture.ReleaseTemporary(dummyTexture);
-        _cameraPass.targetTexture = null;
         RenderTexture.ReleaseTemporary(destTexture);
         
         RuntimeIcons.Log.LogInfo($"{texture.name} Rendered");
         // Return the texture
         return texture;
+    }
+
+    private void SetAlphaEnabled(bool enabled)
+    {
+        ref var settings = ref ((HDRenderPipelineAsset)GraphicsSettings.currentRenderPipeline).m_RenderPipelineSettings;
+
+        var prevFormat = settings.colorBufferFormat;
+
+        if (!enabled)
+        {
+            if (_originalColorBufferFormat.HasValue)
+            {
+                settings.colorBufferFormat = _originalColorBufferFormat.Value;
+                _originalColorBufferFormat = null;
+            }
+        }
+        else
+        {
+            if (!_originalColorBufferFormat.HasValue)
+                _originalColorBufferFormat = settings.colorBufferFormat;
+            settings.colorBufferFormat = ColorBufferFormat.R16G16B16A16;
+        }
+
+        if (settings.colorBufferFormat != prevFormat)
+        {
+            var pipeline = (HDRenderPipeline)RenderPipelineManager.currentPipeline;
+            var alpha = settings.SupportsAlpha();
+            pipeline.m_EnableAlpha = alpha && settings.postProcessSettings.supportsAlpha;
+            pipeline.m_KeepAlpha = alpha;
+        }
+    }
+
+    private void BeginCameraRendering(ScriptableRenderContext context, Camera camera)
+    {
+        if (camera != _camera)
+            return;
+
+        SetAlphaEnabled(true);
+    }
+
+    private void EndCameraRendering(ScriptableRenderContext context, Camera camera)
+    {
+        if (camera != _camera)
+            return;
+
+        SetAlphaEnabled(false);
     }
 
     private class IsolateStageLights : IDisposable
