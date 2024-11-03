@@ -31,6 +31,7 @@
             Include="LethalCompany.GameLibs.Steam"
             Version="64.0.0-ngd.0"
             Private="False"
+            Publicize="True"
         />
 
     </ItemGroup>
