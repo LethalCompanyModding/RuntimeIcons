@@ -76,7 +76,7 @@
         </ItemGroup>
         <Copy
             SourceFiles="@(OverrideFiles)"
-            DestinationFolder="$(PluginsDir)\$(ModName)"
+            DestinationFolder="$(PluginsDir)\$(ModName)\%(RecursiveDir)"
         />
 
         <ItemGroup>
