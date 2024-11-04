@@ -122,11 +122,23 @@ public class StageComponent : MonoBehaviour
         cam.cullingMask = cameraLayerMask;
         cam.orthographic = orthographic;
         cam.aspect = (float)stageComponent.Resolution.x / stageComponent.Resolution.y;
-        cam.clearFlags = CameraClearFlags.SolidColor;
-        cam.backgroundColor = Color.clear;
         cam.nearClipPlane = 0.1f;
         cam.farClipPlane = 10f;
         cam.enabled = false;
+
+        var hdrpCam = cameraGo.AddComponent<HDAdditionalCameraData>();
+        hdrpCam.clearColorMode = HDAdditionalCameraData.ClearColorMode.Color;
+        hdrpCam.backgroundColorHDR = Color.clear;
+        hdrpCam.customRenderingSettings = true;
+        void SetOverride(FrameSettingsField setting, bool enabled)
+        {
+            hdrpCam.renderingPathCustomFrameSettingsOverrideMask.mask[(uint)setting] = true;
+            hdrpCam.renderingPathCustomFrameSettings.SetEnabled(setting, enabled);
+        }
+        SetOverride(FrameSettingsField.CustomPass, false);
+        SetOverride(FrameSettingsField.CustomPostProcess, false);
+        SetOverride(FrameSettingsField.Tonemapping, false);
+        SetOverride(FrameSettingsField.ColorGrading, false);
 
         return stageComponent;
     }
