@@ -33,8 +33,11 @@ public static class GrabbableObjectPatch
     {
         if (ItemHasIcon(__instance.itemProperties)) 
             return;
+        
+        var key = GetPathForItem(__instance.itemProperties)
+            .Replace(Path.DirectorySeparatorChar, '/');
 
-        var inList = PluginConfig.ItemList.Contains(__instance.itemProperties.itemName);
+        var inList = PluginConfig.ItemList.Contains(key);
         
         if (PluginConfig.ItemListBehaviour switch
             {
@@ -92,7 +95,8 @@ public static class GrabbableObjectPatch
     [MethodImpl(MethodImplOptions.NoInlining)]
     internal static void ComputeSprite(GrabbableObject grabbableObject)
     {
-        var key = GetPathForItem(grabbableObject.itemProperties).ToLower();
+        var key = GetPathForItem(grabbableObject.itemProperties)
+            .Replace(Path.DirectorySeparatorChar, '/');
 
         RuntimeIcons.OverrideMap.TryGetValue(key, out var overrideHolder);
         
