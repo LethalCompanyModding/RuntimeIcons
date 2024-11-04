@@ -27,19 +27,30 @@
 
         <PackageReference Include="BepInEx.Core" Version="5.4.21" Private="False"/>
 
+<<<<<<< HEAD
         <PackageReference
             Include="LethalCompany.GameLibs.Steam"
             Version="64.0.0-ngd.0"
             Private="False"
             Publicize="True"
         />
+=======
+        <PackageReference Include="LethalCompany.GameLibs.Steam" Version="64.0.0-ngd.0" Private="False" />
+>>>>>>> 4f497bc (improved folder structure for override search)
 
     </ItemGroup>
 
     <!-- Defining the reference files that have to be publicized. -->
     <ItemGroup>
-        <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.1"
-            PrivateAssets="all" />
+        <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.1" PrivateAssets="all" />
+        <PackageReference
+            Include="LethalCompany.GameLibs.Steam"
+            Version="64.0.0-ngd.0"
+            Private="False"
+            Publicize="True"
+        />
+        <PackageReference Include="LethalCompany.GameLibs.Steam" Version="64.0.0-ngd.0" Private="False" />
+        <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.1" PrivateAssets="all" />
     </ItemGroup>
 
 </Project>
