@@ -54,7 +54,7 @@
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     </PropertyGroup>
 
-    <Target Name="Upload" AfterTargets="AfterBuild" Condition="'$(Upload)'=='TRUE'">
+    <Target Name="Upload" AfterTargets="AfterBuild" Condition="'$(Upload)'=='TRUE' Or '$(Upload)'=='Dry'">
         <PropertyGroup>
             <DistributionDir>$(SolutionDir)\artifacts\tspublish\dist</DistributionDir>
             <PluginsDir>$(DistributionDir)\plugins</PluginsDir>
@@ -72,7 +72,8 @@
         />
         
         <ItemGroup>
-            <OverrideFiles Include="$(ProjectDir)\resources\**" Exclude="**\*.xcf" />
+            <OverrideFiles Include="$(ProjectDir)\resources\**\*.png" />
+            <OverrideFiles Include="$(ProjectDir)\resources\**\*.json" />
         </ItemGroup>
         <Copy
             SourceFiles="@(OverrideFiles)"
@@ -88,7 +89,8 @@
             SourceFiles="@(PackageFiles)"
         />
 
-        <Exec
+        <Exec 
+            Condition="'$(UPLOAD)'=='TRUE'"
             Command='dotnet tcli publish --package-name "$(Product)" --package-namespace "$(Authors)" --package-version "$(PACKAGE_VERSION)"'
             ConsoleToMSBuild="true"
             WorkingDirectory="$(SolutionDir)\artifacts\tspublish"
