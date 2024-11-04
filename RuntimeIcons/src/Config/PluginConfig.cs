@@ -38,9 +38,9 @@ internal static class PluginConfig
         
         _itemListBehaviourConfig = config.Bind("Config", "List Behaviour", ListBehaviour.BlackList, "What mode to use to filter what items will get new icons");
                 
-        _itemListConfig = config.Bind("Config", "Item List", "Body,", "List of items to filter");
+        _itemListConfig = config.Bind("Config", "Item List", "", "List of items to filter\nExample: Vanilla/Big bolt, Unknown/Body");
         
-        _failPercentage = config.Bind("Config", "Transparency Threshold", 0.95f, new ConfigDescription("Maximum percentage of transparent pixels to consider a valid image", new AcceptableValueRange<float>(0f, 1f)));
+        _failPercentage = config.Bind("Config", "Transparency Threshold", 0.98f, new ConfigDescription("Maximum percentage of transparent pixels to consider a valid image", new AcceptableValueRange<float>(0f, 1f)));
         
         
         ParseBlacklist();
