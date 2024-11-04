@@ -22,7 +22,7 @@ namespace RuntimeIcons.Dependency
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         public static void Init()
         {
-            PluginHelper.RegisterPlugin(RuntimeIcons.GUID, Version.Parse(RuntimeIcons.VERSION), CompatibilityLevel.Everyone, VersionStrictness.Minor);
+            PluginHelper.RegisterPlugin(RuntimeIcons.GUID, Version.Parse(RuntimeIcons.VERSION), CompatibilityLevel.ClientOnly, VersionStrictness.None);
         }
         
     }
