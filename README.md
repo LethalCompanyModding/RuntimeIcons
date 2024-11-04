@@ -66,12 +66,6 @@ The following options are provided:
 <img src="https://raw.github.com/LethalCompanyModding/RuntimeIcons/1d1d58b2c29af5e8bf5b48a49fad87db79cde9c3/.github/images/renders/base_gear.png" alt="Default Gear Icon" width="10%"/>
 </p>
 
-### My custom item still has the gear icon!
-
-If an item you have created in the Unity editor without assigning an icon does not automatically receive an icon through Runtime Icons, please ensure that the HDRP's `Lit Shader Mode` is set to `Both`. The option can be found under Edit → Project Settings → Quality → HDRP → Lit Shader Mode. This should be the default mode when using the Lethal Company Project Patcher.
-
-**Technical explanation:** Due to a limitation in Lethal Company's HDRP settings, rendering a camera directly to a render texture with a transparent background results in an opaque image. To work around this, we have implemented a custom pass to render to a transparent render texture. However, custom passes are only able to render using the `Forward` mode, meaning that any objects that are built without those shaders will be invisible in the custom pass's output.
-
 ### My custom item is displayed at a weird angle!
 
 You may want to adjust your resting rotation to get a better result. Items will normally be rendered from an angle similar to the perspective of a player that has dropped the item in front of them and then stood back and crouched. This angle will be adjusted somewhat based on the item's dimensions to give the image more depth.
