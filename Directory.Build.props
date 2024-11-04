@@ -72,7 +72,7 @@
         />
         
         <ItemGroup>
-            <OverrideFiles Include="$(ProjectDir)\resources\overrides\**" Exclude="**\*.deps.json" />
+            <OverrideFiles Include="$(ProjectDir)\resources\**" Exclude="**\*.xcf" />
         </ItemGroup>
         <Copy
             SourceFiles="@(OverrideFiles)"
