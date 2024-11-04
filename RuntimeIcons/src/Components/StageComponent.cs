@@ -149,11 +149,6 @@ public class StageComponent : MonoBehaviour
         HDRenderPipelinePatch.beginCameraRendering += BeginCameraRendering;
         RenderPipelineManager.endCameraRendering += EndCameraRendering;
     }
-
-    public void SetObjectOnStage(GameObject targetGameObject)
-    {
-        SetObjectOnStage(targetGameObject.transform);
-    }
     
     public void SetObjectOnStage(GrabbableObject targetItem)
     {

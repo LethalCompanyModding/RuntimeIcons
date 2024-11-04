@@ -70,6 +70,14 @@
             SourceFiles="@(OutputFiles)"
             DestinationFolder="$(PluginsDir)"
         />
+        
+        <ItemGroup>
+            <OverrideFiles Include="$(ProjectDir)\resources\overrides\**" Exclude="**\*.deps.json" />
+        </ItemGroup>
+        <Copy
+            SourceFiles="@(OverrideFiles)"
+            DestinationFolder="$(PluginsDir)\$(ModName)"
+        />
 
         <ItemGroup>
             <PackageFiles Include="$(SolutionDir)\CHANGELOG.md" />
