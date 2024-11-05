@@ -15,6 +15,19 @@ public static class GrabbableObjectPatch
 {
     internal static bool ItemHasIcon(Item item)
     {
+        var key = GetPathForItem(item)
+            .Replace(Path.DirectorySeparatorChar, '/');
+
+        var inList = PluginConfig.ItemList.Contains(key);
+        
+        if (PluginConfig.ItemListBehaviour switch
+            {
+                PluginConfig.ListBehaviour.BlackList => inList,
+                PluginConfig.ListBehaviour.WhiteList => !inList,
+                _ => false
+            })
+            return true;
+        
         if (!item.itemIcon)
             return false;
         if (item.itemIcon == RuntimeIcons.LoadingSprite)
@@ -22,6 +35,10 @@ public static class GrabbableObjectPatch
         if (item.itemIcon.name == "ScrapItemIcon")
             return false;
         if (item.itemIcon.name == "ScrapItemIcon2")
+            return false;
+
+        if (RuntimeIcons.OverrideMap.TryGetValue(key, out var holder) && holder.OverrideSprite &&
+            item.itemIcon != holder.OverrideSprite)
             return false;
         
         return true;
@@ -32,20 +49,6 @@ public static class GrabbableObjectPatch
     private static void AfterStart(GrabbableObject __instance)
     {
         if (ItemHasIcon(__instance.itemProperties)) 
-            return;
-        
-        var key = GetPathForItem(__instance.itemProperties)
-            .Replace(Path.DirectorySeparatorChar, '/');
-
-        var inList = PluginConfig.ItemList.Contains(key);
-        
-        if (PluginConfig.ItemListBehaviour switch
-            {
-                PluginConfig.ListBehaviour.BlackList => inList,
-                PluginConfig.ListBehaviour.WhiteList => !inList,
-                PluginConfig.ListBehaviour.None => false,
-                _ => false
-            })
             return;
         
         __instance.StartCoroutine(ComputeSpriteCoroutine(__instance));
