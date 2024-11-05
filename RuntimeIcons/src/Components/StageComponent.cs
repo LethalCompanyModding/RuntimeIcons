@@ -163,6 +163,7 @@ public class StageComponent : MonoBehaviour
         SceneManager.MoveGameObjectToScene(PivotGo, targetTransform.gameObject.scene);
         
         StagedTransform = targetTransform;
+        StagedItem = targetItem;
         
         Memory = new TransformMemory(StagedTransform);
         
@@ -292,6 +293,7 @@ public class StageComponent : MonoBehaviour
         }
 
         StagedTransform = null;
+        StagedItem = null;
         Memory = default;
         
         PivotTransform.parent = null;

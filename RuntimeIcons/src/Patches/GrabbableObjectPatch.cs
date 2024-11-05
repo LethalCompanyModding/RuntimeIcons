@@ -188,7 +188,9 @@ public static class GrabbableObjectPatch
                 RuntimeIcons.Log.LogError($"{key} Generated {ratio*100}% Empty Sprite!");
             }
 
-        }
+        } catch (Exception ex){
+			RuntimeIcons.Log.LogError($"Error generating {key}\n{ex}");
+		}
         finally
         {
             stage.ResetStage();
