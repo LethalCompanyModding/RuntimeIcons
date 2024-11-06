@@ -21,10 +21,16 @@ internal static class PluginConfig
     internal static float TransparencyRatio => _failPercentage.Value;
     internal static ISet<string> ItemList { get; private set; }
     internal static ListBehaviour ItemListBehaviour => _itemListBehaviourConfig.Value;
+    
+    internal static int RenderingInterval => _renderingInterval.Value;
+    internal static int RenderingAmount => _renderingAmount.Value;
 
     private static ConfigEntry<ListBehaviour> _itemListBehaviourConfig;
     private static ConfigEntry<string> _itemListConfig;
     private static ConfigEntry<float> _failPercentage;
+    private static ConfigEntry<int> _renderingInterval;
+    private static ConfigEntry<int> _renderingAmount;
+    
     private static ConfigEntry<LogLevel> _verboseMeshLogs;
     private static ConfigEntry<bool> _dumpToCache;
 
@@ -42,6 +48,9 @@ internal static class PluginConfig
         
         _failPercentage = config.Bind("Config", "Transparency Threshold", 0.98f, new ConfigDescription("Maximum percentage of transparent pixels to consider a valid image", new AcceptableValueRange<float>(0f, 1f)));
         
+        _renderingInterval = config.Bind("Config", "Rendering interval", 2, new ConfigDescription("How frequently can a new icon be rendered", new AcceptableValueRange<int>(1, 10)));
+        _renderingAmount = config.Bind("Config", "Rendering amount", 1, new ConfigDescription("How many icons can be rendered each cycle", new AcceptableValueRange<int>(1, 99)));
+        
         
         ParseBlacklist();
         _itemListConfig.SettingChanged += (_, _) => ParseBlacklist();
@@ -55,6 +64,8 @@ internal static class PluginConfig
             LethalConfigProxy.AddConfig(_itemListConfig);
             LethalConfigProxy.AddConfig(_itemListBehaviourConfig);
             LethalConfigProxy.AddConfig(_failPercentage);
+            LethalConfigProxy.AddConfig(_renderingInterval, true);
+            LethalConfigProxy.AddConfig(_renderingAmount, true);
                     
             LethalConfigProxy.AddButton("Debug", "Refresh Held Item", "Regenerate Sprite for held Item", "Refresh",
                 () =>

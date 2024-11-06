@@ -9,8 +9,6 @@ namespace RuntimeIcons.Patches;
 [HarmonyPatch]
 public class StartOfRoundPatch
 {
-    internal static int AvailableRenders { get; set; } = 0;
-    
     internal static readonly Dictionary<Item, Tuple<string,string>> ItemModMap = [];
 
     internal static void Init()
@@ -40,13 +38,6 @@ public class StartOfRoundPatch
 
         foreach (var itemType in __instance.allItemsList.itemsList)
             ItemModMap.TryAdd(itemType, new Tuple<string, string>("Unknown", ""));
-    }
-    
-    [HarmonyFinalizer]
-    [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.LateUpdate))]
-    private static void TrackNewRenders(StartOfRound __instance)
-    {
-        AvailableRenders = 1;
     }
 
 }

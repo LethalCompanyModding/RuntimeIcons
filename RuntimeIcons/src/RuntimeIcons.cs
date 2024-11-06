@@ -38,6 +38,7 @@ public class RuntimeIcons : BaseUnityPlugin
     internal static ManualLogSource Log;
 
     internal static StageComponent CameraStage;
+    internal static GameObject ThrottleGo;
 
     internal static Dictionary<string, OverrideHolder> OverrideMap = new(StringComparer.InvariantCultureIgnoreCase);
 
@@ -46,6 +47,7 @@ public class RuntimeIcons : BaseUnityPlugin
     public static Sprite ErrorSprite { get; private set; }
 
     public static RuntimeIcons INSTANCE { get; private set; }
+
 
     private void Awake()
     {
@@ -63,6 +65,7 @@ public class RuntimeIcons : BaseUnityPlugin
             Log.LogInfo("Preparing Stage");
 
             SetStage();
+            ThrottleGo =ThrottleUtils.InitComponents();
 
             Log.LogInfo("Loading Overrides");
 

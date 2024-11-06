@@ -13,6 +13,17 @@ namespace RuntimeIcons.Patches;
 [HarmonyPatch]
 public static class GrabbableObjectPatch
 {
+    private static ThrottleUtils.Semaphore _renderingSemaphore;
+
+    internal static ThrottleUtils.Semaphore RenderingSemaphore
+    {
+        get
+        {
+            _renderingSemaphore ??= ThrottleUtils.Semaphore.CreateNewSemaphore(PluginConfig.RenderingAmount, PluginConfig.RenderingInterval, ThrottleUtils.SemaphoreTimeUnit.Update);
+            return _renderingSemaphore;
+        }
+    }
+
     internal static bool ItemHasIcon(Item item)
     {
         var key = GetPathForItem(item)
@@ -61,7 +72,7 @@ public static class GrabbableObjectPatch
         yield return null;
         
         //throttle renders to not hang the game
-        yield return new WaitUntil(()=>StartOfRoundPatch.AvailableRenders > 0);
+        yield return new WaitUntil(()=>RenderingSemaphore.TryAcquire());
         
         if (ItemHasIcon(@this.itemProperties))
             yield break;
@@ -86,6 +97,7 @@ public static class GrabbableObjectPatch
         
         RuntimeIcons.Log.LogInfo($"Attempting to refresh BrokenIcon for {__instance.itemProperties.itemName}!");
         
+        RenderingSemaphore.TryAcquire();
         ComputeSprite(__instance);
 
         if (__instance.itemProperties.itemIcon == RuntimeIcons.LoadingSprite)
@@ -117,9 +129,6 @@ public static class GrabbableObjectPatch
             RuntimeIcons.Log.LogInfo($"{key} now has a new icon | 1");
             return;
         }
-
-        //we're rendering!
-        StartOfRoundPatch.AvailableRenders--;
         
         var stage = RuntimeIcons.CameraStage;
         try
@@ -231,4 +240,5 @@ public static class GrabbableObjectPatch
 
         return path;
     }
+
 }
