@@ -25,5 +25,7 @@ public static class LethalLibProxy
     {
         RuntimeIcons.Log.LogWarning("LethalLib found, reading Items.scrapItems");
         foreach (var scrapItem in Items.scrapItems) items.TryAdd(scrapItem.item, new Tuple<string,string>("LethalLib", scrapItem.modName));
+        foreach (var scrapItem in Items.plainItems) items.TryAdd(scrapItem.item, new Tuple<string,string>("LethalLib", scrapItem.modName));
+        foreach (var scrapItem in Items.shopItems)  items.TryAdd(scrapItem.item, new Tuple<string,string>("LethalLib", scrapItem.modName));
     }
 }

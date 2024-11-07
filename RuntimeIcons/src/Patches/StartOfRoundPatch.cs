@@ -20,6 +20,13 @@ public class StartOfRoundPatch
     private static void PrepareItemCache(Action<StartOfRound> orig, StartOfRound __instance)
     {
         ItemModMap.Clear();
+        
+        if (LethalLibProxy.Enabled)
+            LethalLibProxy.GetModdedItems(in ItemModMap);
+
+        if (LethalLevelLoaderProxy.Enabled)
+            LethalLevelLoaderProxy.GetModdedItems(in ItemModMap);
+        
         foreach (var itemType in __instance.allItemsList.itemsList)
             ItemModMap.TryAdd(itemType, new Tuple<string, string>("Vanilla", ""));
 
