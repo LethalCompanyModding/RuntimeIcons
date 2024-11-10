@@ -77,7 +77,7 @@ public class RuntimeIcons : BaseUnityPlugin
 
             Log.LogInfo("Patching Methods");
 
-            StartOfRoundPatch.Init();
+            CategorizeItemPatch.Init();
             Harmony.PatchAll();
 
             Log.LogInfo(NAME + " v" + VERSION + " Loaded!");

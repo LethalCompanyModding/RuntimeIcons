@@ -26,7 +26,7 @@ public static class GrabbableObjectPatch
 
     internal static bool ItemHasIcon(Item item)
     {
-        var key = GetPathForItem(item)
+        var key = CategorizeItemPatch.GetPathForItem(item)
             .Replace(Path.DirectorySeparatorChar, '/');
 
         var inList = PluginConfig.ItemList.Contains(key);
@@ -110,7 +110,7 @@ public static class GrabbableObjectPatch
     [MethodImpl(MethodImplOptions.NoInlining)]
     internal static void ComputeSprite(GrabbableObject grabbableObject)
     {
-        var key = GetPathForItem(grabbableObject.itemProperties)
+        var key = CategorizeItemPatch.GetPathForItem(grabbableObject.itemProperties)
             .Replace(Path.DirectorySeparatorChar, '/');
 
         RuntimeIcons.OverrideMap.TryGetValue(key, out var overrideHolder);
@@ -169,7 +169,7 @@ public static class GrabbableObjectPatch
             
             if (PluginConfig.DumpToCache)
             {
-                var outputPath = GetPathForItem(grabbableObject.itemProperties);
+                var outputPath = CategorizeItemPatch.GetPathForItem(grabbableObject.itemProperties);
                 var directory = Path.GetDirectoryName(outputPath) ?? "";
                 var filename = Path.GetFileName(outputPath);
                 
@@ -222,23 +222,4 @@ public static class GrabbableObjectPatch
             itemSlotIcons[i].sprite = item.itemIcon;
         }
     }
-
-    private static string GetPathForItem(Item item)
-    {
-        if (!StartOfRoundPatch.ItemModMap.TryGetValue(item, out var modTag))
-            modTag = new Tuple<string, string>("Unknown", "");
-
-        var cleanName = String.Join("_",
-                item.itemName.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries))
-            .TrimEnd('.');
-        
-        var cleanMod = String.Join("_",
-                modTag.Item2.Split(Path.GetInvalidPathChars(), StringSplitOptions.RemoveEmptyEntries))
-            .TrimEnd('.');
-
-        var path = Path.Combine(modTag.Item1, cleanMod, cleanName);
-
-        return path;
-    }
-
 }
