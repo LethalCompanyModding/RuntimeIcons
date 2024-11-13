@@ -54,8 +54,6 @@ The first time an item that lacks an icon is spawned, it generates an icon to re
 The following options are provided:
 
 - **Blacklist/whitelist items** - Select whether to blacklist or whitelist items, then create a list of items to use.
-- **Manual icon overrides** - Provide a mapping from item name to file path to choose an icon on the disk to use as its icon, in the form `Item A: Path/To/Icon A.png, Item B: Path/To/Icon B.png`
-- **Manual rotation per item** - Customize the rotation of individual items in their rendered icons, by specifying their rotation in the form `Item A:x,y,z|Item B:x,y,z`, where `|` is the item separator. A tool is accessible via LethalConfig to combine rotations into a final `x,y,z` value to use.
 - **Adjust icon emptiness threshold** - Specify the amount of fully transparent pixels allowed before the icon is considered empty.
 - **Dump sprites to disk** - This option can be used to collect all generated icons in the `BepInEx/cache` folder. They will be stored in both PNG and EXR, where EXR fully retains specular highlights on transparent objects.
 
