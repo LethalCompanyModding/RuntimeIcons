@@ -17,6 +17,7 @@ using RuntimeIcons.Utils;
 using UnityEngine;
 using UnityEngine.Rendering.HighDefinition;
 using LogType = VertexLibrary.LogType;
+using Object = UnityEngine.Object;
 
 namespace RuntimeIcons;
 
@@ -43,6 +44,7 @@ public class RuntimeIcons : BaseUnityPlugin
     internal static Dictionary<string, OverrideHolder> OverrideMap = new(StringComparer.InvariantCultureIgnoreCase);
 
     public static Sprite LoadingSprite { get; private set; }
+    public static Sprite LoadingSprite2 { get; private set; }
     public static Sprite WarningSprite { get; private set; }
     public static Sprite ErrorSprite { get; private set; }
 
@@ -252,8 +254,10 @@ public class RuntimeIcons : BaseUnityPlugin
             var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LoadingSprite.png");
             LoadingSprite = SpriteUtils.GetSprite(stream);
         }
+        LoadingSprite2 = Instantiate(LoadingSprite);
 
         LoadingSprite.name = LoadingSprite.texture.name = $"{nameof(RuntimeIcons)}.Loading";
+        LoadingSprite2.name = LoadingSprite2.texture.name = $"{nameof(RuntimeIcons)}.Loading2";
 
         if (OverrideMap.TryGetValue("RuntimeIcons/Warning", out holder) && holder.OverrideSprite)
         {

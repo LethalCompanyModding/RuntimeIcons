@@ -62,6 +62,8 @@ public static class GrabbableObjectPatch
         if (ItemHasIcon(__instance.itemProperties)) 
             return;
         
+        __instance.itemProperties.itemIcon =  RuntimeIcons.LoadingSprite;
+        
         __instance.StartCoroutine(ComputeSpriteCoroutine(__instance));
     }
 
@@ -79,7 +81,7 @@ public static class GrabbableObjectPatch
         
         ComputeSprite(@this);
         
-        if (@this.itemProperties.itemIcon == RuntimeIcons.LoadingSprite)
+        if (@this.itemProperties.itemIcon == RuntimeIcons.LoadingSprite2)
             @this.itemProperties.itemIcon =  RuntimeIcons.WarningSprite;
         
         UpdateIconsInHUD(@this.itemProperties);
@@ -100,7 +102,7 @@ public static class GrabbableObjectPatch
         RenderingSemaphore.TryAcquire();
         ComputeSprite(__instance);
 
-        if (__instance.itemProperties.itemIcon == RuntimeIcons.LoadingSprite)
+        if (__instance.itemProperties.itemIcon == RuntimeIcons.LoadingSprite2)
             __instance.itemProperties.itemIcon =  RuntimeIcons.ErrorSprite;
         
         UpdateIconsInHUD(__instance.itemProperties);
@@ -117,7 +119,7 @@ public static class GrabbableObjectPatch
         
         RuntimeIcons.Log.LogWarning($"Computing {key} icon");
         
-        grabbableObject.itemProperties.itemIcon = RuntimeIcons.LoadingSprite;
+        grabbableObject.itemProperties.itemIcon = RuntimeIcons.LoadingSprite2;
         
         UpdateIconsInHUD(grabbableObject.itemProperties);
 
