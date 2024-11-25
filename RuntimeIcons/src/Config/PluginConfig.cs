@@ -1,15 +1,10 @@
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
 using RuntimeIcons.Dependency;
-using RuntimeIcons.Patches;
-using UnityEngine;
 using LogLevel = BepInEx.Logging.LogLevel;
-using Object = UnityEngine.Object;
 
 namespace RuntimeIcons.Config;
 
@@ -21,15 +16,10 @@ internal static class PluginConfig
     internal static float TransparencyRatio => _failPercentage.Value;
     internal static ISet<string> ItemList { get; private set; }
     internal static ListBehaviour ItemListBehaviour => _itemListBehaviourConfig.Value;
-    
-    internal static int RenderingInterval => _renderingInterval.Value;
-    internal static int RenderingAmount => _renderingAmount.Value;
 
     private static ConfigEntry<ListBehaviour> _itemListBehaviourConfig;
     private static ConfigEntry<string> _itemListConfig;
     private static ConfigEntry<float> _failPercentage;
-    private static ConfigEntry<int> _renderingInterval;
-    private static ConfigEntry<int> _renderingAmount;
     
     private static ConfigEntry<LogLevel> _verboseMeshLogs;
     private static ConfigEntry<bool> _dumpToCache;
@@ -48,10 +38,6 @@ internal static class PluginConfig
         
         _failPercentage = config.Bind("Config", "Transparency Threshold", 0.98f, new ConfigDescription("Maximum percentage of transparent pixels to consider a valid image", new AcceptableValueRange<float>(0f, 1f)));
         
-        _renderingInterval = config.Bind("Config", "Rendering interval", 2, new ConfigDescription("How frequently can a new icon be rendered", new AcceptableValueRange<int>(1, 10)));
-        _renderingAmount = config.Bind("Config", "Rendering amount", 1, new ConfigDescription("How many icons can be rendered each cycle", new AcceptableValueRange<int>(1, 99)));
-        
-        
         ParseBlacklist();
         _itemListConfig.SettingChanged += (_, _) => ParseBlacklist();
                 
@@ -64,30 +50,24 @@ internal static class PluginConfig
             LethalConfigProxy.AddConfig(_itemListConfig);
             LethalConfigProxy.AddConfig(_itemListBehaviourConfig);
             LethalConfigProxy.AddConfig(_failPercentage);
-            LethalConfigProxy.AddConfig(_renderingInterval, true);
-            LethalConfigProxy.AddConfig(_renderingAmount, true);
                     
             LethalConfigProxy.AddButton("Debug", "Refresh Held Item", "Regenerate Sprite for held Item", "Refresh",
                 () =>
                 {
-                    if (!StartOfRound.Instance)
+                    var startOfRound = StartOfRound.Instance;
+                    if (!startOfRound)
                         return;
                             
-                    if (!StartOfRound.Instance.localPlayerController.currentlyHeldObjectServer)
+                    if (!startOfRound.localPlayerController.currentlyHeldObjectServer)
                         return;
-                            
-                    GrabbableObjectPatch.ComputeSprite(StartOfRound.Instance.localPlayerController.currentlyHeldObjectServer);
+
+                    var heldItem = startOfRound.localPlayerController.currentlyHeldObjectServer;
+
+                    var oldIcon = heldItem.itemProperties.itemIcon;
+                    heldItem.itemProperties.itemIcon = null;
+
+                    RuntimeIcons.CameraStage.CameraQueue.EnqueueObject(heldItem, oldIcon);
                     
-                    GrabbableObjectPatch.UpdateIconsInHUD(StartOfRound.Instance.localPlayerController.currentlyHeldObjectServer.itemProperties);
-                });
-            LethalConfigProxy.AddButton("Debug", "Render All Loaded Items", "Finds all items in the resources of the game to render them. Must be in a game.", "Render All Items",
-                () =>
-                {
-                    if (StartOfRound.Instance == null)
-                        return;
-
-                    StartOfRound.Instance.StartCoroutine(RenderAllCoroutine());
-
                 });
         }
                 
@@ -124,73 +104,6 @@ internal static class PluginConfig
         orphanedEntries.Clear(); // Clear orphaned entries (Unbinded/Abandoned entries)
         config.Save(); // Save the config file
     }
-
-    private static IEnumerator RenderAllCoroutine()
-    {
-        var items = Resources.FindObjectsOfTypeAll<Item>();
-        var renderedItems = new HashSet<Item>();
-
-        foreach (var item in items)
-        {
-            if (!item.spawnPrefab)
-                continue;
-
-            var originalIcon = item.itemIcon;
-            item.itemIcon = null;
-
-            var spawnedItem = Object.Instantiate(item.spawnPrefab);
-            
-            try
-            {
-                var grabbableObject = spawnedItem.GetComponentInChildren<GrabbableObject>();
-                grabbableObject.Start();
-                grabbableObject.Update();
-                var animators = grabbableObject.GetComponentsInChildren<Animator>();
-                foreach (var animator in animators)
-                    animator.Update(Time.deltaTime);
-                GrabbableObjectPatch.ComputeSprite(grabbableObject);
-            }
-            catch { }
-            finally
-            {
-                Object.Destroy(spawnedItem);
-            }
-
-            if (item.itemIcon && item.itemIcon != RuntimeIcons.LoadingSprite)
-                renderedItems.Add(item);
-
-            item.itemIcon = originalIcon;
-            
-            yield return null;
-        }
-
-        var reportBuilder = new StringBuilder("Items that failed to render: ");
-        var anyFailed = false;
-
-        foreach (var item in items)
-        {
-            if (!renderedItems.Contains(item))
-            {
-                reportBuilder.Append(item.itemName);
-                if (GrabbableObjectPatch.ItemHasIcon(item))
-                    reportBuilder.Append(" (✓)");
-                else
-                    reportBuilder.Append(" (✗)");
-                reportBuilder.Append(", ");
-                anyFailed = true;
-            }
-        }
-
-        if (anyFailed)
-        {
-            reportBuilder.Length -= 2;
-            RuntimeIcons.Log.LogInfo(reportBuilder);
-        }
-        else
-        {
-            RuntimeIcons.Log.LogInfo("No items failed to render.");
-        }
-    }
-    
+   
 
 }
