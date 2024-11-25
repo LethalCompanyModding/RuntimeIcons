@@ -17,7 +17,6 @@ using RuntimeIcons.Utils;
 using UnityEngine;
 using UnityEngine.Rendering.HighDefinition;
 using LogType = VertexLibrary.LogType;
-using Object = UnityEngine.Object;
 
 namespace RuntimeIcons;
 
@@ -39,7 +38,6 @@ public class RuntimeIcons : BaseUnityPlugin
     internal static ManualLogSource Log;
 
     internal static StageComponent CameraStage;
-    internal static GameObject ThrottleGo;
 
     internal static Dictionary<string, OverrideHolder> OverrideMap = new(StringComparer.InvariantCultureIgnoreCase);
 
@@ -67,7 +65,6 @@ public class RuntimeIcons : BaseUnityPlugin
             Log.LogInfo("Preparing Stage");
 
             SetStage();
-            ThrottleGo =ThrottleUtils.InitComponents();
 
             Log.LogInfo("Loading Overrides");
 

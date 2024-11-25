@@ -16,6 +16,7 @@ namespace RuntimeIcons.Components;
 
 public class StageComponent : MonoBehaviour
 {
+    internal CameraQueueComponent CameraQueue { get; private set; }
     private StageComponent(){}
 
     public IVertexCache VertexCache { get; set; } = VertexesExtensions.GlobalPartialCache;
@@ -140,6 +141,10 @@ public class StageComponent : MonoBehaviour
         SetOverride(FrameSettingsField.CustomPostProcess, false);
         SetOverride(FrameSettingsField.Tonemapping, false);
         SetOverride(FrameSettingsField.ColorGrading, false);
+
+        var cameraQueue = cameraGo.AddComponent<CameraQueueComponent>();
+        cameraQueue.Stage = stageComponent;
+        stageComponent.CameraQueue = cameraQueue;
 
         return stageComponent;
     }
@@ -402,7 +407,7 @@ public class StageComponent : MonoBehaviour
         SetAlphaEnabled(false);
     }
 
-    private class IsolateStageLights : IDisposable
+    internal class IsolateStageLights : IDisposable
     {
         private readonly HashSet<Light> _lightMemory;
         private readonly Color _ambientLight;

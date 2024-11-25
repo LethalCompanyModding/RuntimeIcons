@@ -2,7 +2,7 @@
     
     <PropertyGroup>
         <!-- Common Versioning and Module Information -->
-        <Version>0.2.0</Version>
+        <Version>0.3.0</Version>
         <ModName>RuntimeIcons</ModName>
         <ModGUID>com.github.lethalcompanymodding.runtimeicons</ModGUID>
         <ModNameSpace>$(ModName)</ModNameSpace>
