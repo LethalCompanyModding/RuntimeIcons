@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using BepInEx;
 using RuntimeIcons.Config;
@@ -9,13 +8,13 @@ using RuntimeIcons.Utils;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
+using Object = UnityEngine.Object;
 
 namespace RuntimeIcons.Components;
 
 public class CameraQueueComponent : MonoBehaviour
 {
     internal PriorityQueue<RenderingElement, long> RenderingQueue { get; } = new (50);
-    internal List<RenderingResult> RenderResults { get; } = [];
     
     private Camera StageCamera { get; set; }
     internal StageComponent Stage { get; set; }
@@ -64,23 +63,15 @@ public class CameraQueueComponent : MonoBehaviour
     
     private void Update()
     {
-        int i = 0;
-        while (i < RenderResults.Count)
+        var currentFrame = Time.frameCount;
+        
+        if (ToRender.HasValue)
         {
-            var curr = RenderResults[i];
+            var targetElement = ToRender.Value;
+            var grabbableObject = targetElement.GrabbableObject;
+            var key = targetElement.ItemKey;
+            var errorSprite = targetElement.ErrorSprite;
 
-            if (!curr.Fence.passed)
-            {
-                i++;
-                continue;
-            }
-            
-            RenderResults.RemoveAt(i);
-            
-            var grabbableObject = curr.Element.GrabbableObject;
-            var key = curr.Element.ItemKey;
-            var errorSprite = curr.Element.ErrorSprite;
-            
             try
             {
                 //TODO enqueue compute shaders
@@ -89,14 +80,16 @@ public class CameraQueueComponent : MonoBehaviour
                 // Activate the temporary render texture
                 var previouslyActiveRenderTexture = RenderTexture.active;
 
-                var srcTexture = curr.Texture;
+                var srcTexture = StageCamera.targetTexture;
                 RenderTexture.active = srcTexture;
 
                 // Extract the image into a new texture without mipmaps
-                var texture = new Texture2D(srcTexture.width, srcTexture.height, GraphicsFormat.R16G16B16A16_SFloat, 1,
+                var texture = new Texture2D(srcTexture.width, srcTexture.height, GraphicsFormat.R16G16B16A16_SFloat,
+                    1,
                     TextureCreationFlags.DontInitializePixels)
                 {
-                    name = $"{nameof(RuntimeIcons)}.{ToRender.Value.GrabbableObject.itemProperties.itemName}Texture",
+                    name =
+                        $"{nameof(RuntimeIcons)}.{grabbableObject.itemProperties.itemName}Texture",
                     filterMode = FilterMode.Point,
                 };
 
@@ -107,6 +100,7 @@ public class CameraQueueComponent : MonoBehaviour
                 RenderTexture.active = previouslyActiveRenderTexture;
 
                 // Clean up after ourselves
+                StageCamera.targetTexture = null;
                 RenderTexture.ReleaseTemporary(srcTexture);
 
                 // UnPremultiply the texture
@@ -137,7 +131,7 @@ public class CameraQueueComponent : MonoBehaviour
                     sprite.name = sprite.texture.name =
                         $"{nameof(RuntimeIcons)}.{grabbableObject.itemProperties.itemName}";
                     grabbableObject.itemProperties.itemIcon = sprite;
-                    RuntimeIcons.Log.LogInfo($"{key} now has a new icon | 2");
+                    RuntimeIcons.Log.LogInfo($"{key} now has a new icon");
                 }
                 else
                 {
@@ -145,7 +139,9 @@ public class CameraQueueComponent : MonoBehaviour
                     grabbableObject.itemProperties.itemIcon = errorSprite;
                     Destroy(texture);
                 }
-            } catch (Exception ex){
+            }
+            catch (Exception ex)
+            {
                 RuntimeIcons.Log.LogError($"Error generating {key}\n{ex}");
                 grabbableObject.itemProperties.itemIcon = errorSprite;
             }
@@ -153,22 +149,19 @@ public class CameraQueueComponent : MonoBehaviour
             HudUtils.UpdateIconsInHUD(grabbableObject.itemProperties);
         }
         
-        var currentFrame = Time.frameCount;
         ToRender = null;
 
         while (RenderingQueue.TryPeek(out var target, out var targetFrame))
         {
-            RuntimeIcons.Log.LogFatal($"Peek {target.ItemKey} target {targetFrame} current {currentFrame}");
             if (targetFrame > currentFrame)
                 break;
 
             var element = RenderingQueue.Dequeue();
-            RuntimeIcons.Log.LogFatal($"Poll {target.ItemKey}");
 
             if (element.GrabbableObject && !ItemHasIcon(element))
             {
-                RuntimeIcons.Log.LogFatal($"ToRender {target.ItemKey}");
                 ToRender = element;
+                Stage.NewCameraTexture();
                 break;
             }
         }
@@ -195,16 +188,9 @@ public class CameraQueueComponent : MonoBehaviour
         var grabbableObject = renderingTarget.GrabbableObject;
         var overrideHolder = renderingTarget.OverrideHolder;
         var key = renderingTarget.ItemKey;
-
-        RuntimeIcons.Log.LogFatal($"Rendering {key}");
         
         try
         {
-            var destTexture = RenderTexture.GetTemporary(
-                Stage.Resolution.x,
-                Stage.Resolution.y, 8, GraphicsFormat.R16G16B16A16_SFloat);
-            StageCamera.targetTexture = destTexture;
-            
             Quaternion rotation;
             if (overrideHolder is { ItemRotation: not null })
             {
@@ -238,11 +224,10 @@ public class CameraQueueComponent : MonoBehaviour
             RuntimeIcons.Log.LogInfo($"Stage rotation {Stage.PivotTransform.rotation.eulerAngles}");
 
             Stage.PrepareCameraForShot();
+            
+            RuntimeIcons.Log.LogInfo($"Camera {(camera.orthographic?"orthographicSize":"field of view")}: {(camera.orthographic?camera.orthographicSize:camera.fieldOfView)}");
 
-            _isolatorHolder = new StageComponent.IsolateStageLights(Stage.PivotGo);
-
-            //Turn on the stage Lights
-            Stage.LightGo.SetActive(true);
+            _isolatorHolder = new StageComponent.IsolateStageLights(Stage.PivotGo, Stage.LightGo);
         }
         catch (Exception ex)
         {
@@ -250,19 +235,11 @@ public class CameraQueueComponent : MonoBehaviour
         }
     }
 
+    private int FrameDelay = 3;
+
     private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
     {
         CameraCleanup();
-
-        if (camera == StageCamera && ToRender.HasValue)
-        {
-            var cmd = new CommandBuffer();
-            var fence = cmd.CreateGraphicsFence(GraphicsFenceType.AsyncQueueSynchronisation, SynchronisationStageFlags.AllGPUOperations);
-
-            RenderResults.Add(new RenderingResult(ToRender.Value, fence, StageCamera.targetTexture));
-            
-            context.ExecuteCommandBuffer(cmd);
-        }
     }
 
     private void CameraCleanup()
@@ -278,8 +255,6 @@ public class CameraQueueComponent : MonoBehaviour
         {
             _isolatorHolder.Dispose();
             _isolatorHolder = null;
-            //Turn off the stage Lights
-            Stage.LightGo.SetActive(false);
         }
     }
     
@@ -312,22 +287,26 @@ public class CameraQueueComponent : MonoBehaviour
     
     public struct RenderingResult
     {
+        private long _targetFrame;
         private RenderingElement _element;
-        private GraphicsFence _fence;
+        //private GraphicsFence _fence;
         private RenderTexture _texture;
 
-        public RenderingResult(RenderingElement element, GraphicsFence fence, RenderTexture texture)
+        public RenderingResult(RenderingElement element, /*GraphicsFence fence,*/ RenderTexture texture, long targetFrame)
         {
             _element = element;
-            _fence = fence;
+            //_fence = fence;
             _texture = texture;
+            _targetFrame = targetFrame;
         }
 
         public RenderingElement Element => _element;
 
-        public GraphicsFence Fence => _fence;
+        //public GraphicsFence Fence => _fence;
 
         public RenderTexture Texture => _texture;
+
+        public long TargetFrame => _targetFrame;
     }
     
     internal static bool ItemHasIcon(RenderingElement element)

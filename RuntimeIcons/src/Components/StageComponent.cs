@@ -99,8 +99,6 @@ public class StageComponent : MonoBehaviour
                 parent = stageGo.transform
             }
         };
-        //disable the lights by default
-        lightsGo.SetActive(false);
         stageComponent.LightGo = lightsGo;
         
         //add Camera
@@ -141,6 +139,8 @@ public class StageComponent : MonoBehaviour
         SetOverride(FrameSettingsField.CustomPostProcess, false);
         SetOverride(FrameSettingsField.Tonemapping, false);
         SetOverride(FrameSettingsField.ColorGrading, false);
+
+        stageComponent.NewCameraTexture();
 
         var cameraQueue = cameraGo.AddComponent<CameraQueueComponent>();
         cameraQueue.Stage = stageComponent;
@@ -321,18 +321,11 @@ public class StageComponent : MonoBehaviour
 
         // Get a temporary render texture and render the camera
 
-        var destTexture = RenderTexture.GetTemporary(Resolution.x, Resolution.y, 8, GraphicsFormat.R16G16B16A16_SFloat);
-        _camera.targetTexture = destTexture;
+        var destTexture = NewCameraTexture();
 
-        using (new IsolateStageLights(PivotGo))
+        using (new IsolateStageLights(PivotGo, LightGo))
         {
-            //Turn on the stage Lights
-            LightGo.SetActive(true);
-            
             _camera.Render();
-            
-            //Turn off the stage Lights
-            LightGo.SetActive(false);
         }
 
         // Activate the temporary render texture
@@ -412,14 +405,19 @@ public class StageComponent : MonoBehaviour
         private readonly HashSet<Light> _lightMemory;
         private readonly Color _ambientLight;
         
-        public IsolateStageLights(GameObject stagePivot)
+        public IsolateStageLights(params GameObject[] stageObjects)
         {
             _lightMemory = UnityEngine.Pool.HashSetPool<Light>.Get();
 
             _ambientLight = RenderSettings.ambientLight;
             RenderSettings.ambientLight = Color.black;
 
-            var localLights = stagePivot.GetComponentsInChildren<Light>();
+            List<Light> localLights = [];
+            foreach (var gameObject in stageObjects)
+            {
+                var lights = gameObject.GetComponentsInChildren<Light>();
+                localLights.AddRange(lights);
+            }
 
             var globalLights = FindObjectsOfType<Light>().Where(l => !localLights.Contains(l)).Where(l => l.enabled).ToArray();
 
@@ -562,5 +560,14 @@ public class StageComponent : MonoBehaviour
                 pivotTransform.Rotate(Vector3.right, -25, Space.World);
             }
         }
+    }
+
+    internal RenderTexture NewCameraTexture()
+    {
+        var destTexture = RenderTexture.GetTemporary(
+            Resolution.x,
+            Resolution.y, 8, GraphicsFormat.R16G16B16A16_SFloat);
+        _camera.targetTexture = destTexture;
+        return destTexture;
     }
 }
