@@ -8,7 +8,6 @@ using RuntimeIcons.Utils;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
-using Object = UnityEngine.Object;
 
 namespace RuntimeIcons.Components;
 
@@ -60,6 +59,7 @@ public class CameraQueueComponent : MonoBehaviour
     }
     
     private RenderingElement? ToRender { get; set; }
+    private StageSettings RenderSettings { get; set; }
     
     private void Update()
     {
@@ -124,7 +124,7 @@ public class CameraQueueComponent : MonoBehaviour
                 var totalPixels = texture.width * texture.height;
                 var ratio = (float)transparentCount / (float)totalPixels;
 
-                if (ratio <= PluginConfig.TransparencyRatio)
+                if (ratio < PluginConfig.TransparencyRatio)
                 {
                     var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
                         new Vector2(texture.width / 2f, texture.height / 2f));
@@ -150,6 +150,7 @@ public class CameraQueueComponent : MonoBehaviour
         }
         
         ToRender = null;
+        RenderSettings = null;
 
         while (RenderingQueue.TryPeek(out var target, out var targetFrame))
         {
@@ -158,16 +159,53 @@ public class CameraQueueComponent : MonoBehaviour
 
             var element = RenderingQueue.Dequeue();
 
-            if (element.GrabbableObject && !ItemHasIcon(element))
+            if (element.GrabbableObject&& !element.GrabbableObject.isPocketed && !ItemHasIcon(element) )
             {
                 ToRender = element;
-                Stage.NewCameraTexture();
                 break;
             }
         }
 
         //enable the camera if we have something to render
         StageCamera.enabled = ToRender.HasValue;
+        
+        if (!ToRender.HasValue)
+            return;
+        try
+        {
+            //compute transform and FOV
+
+            RuntimeIcons.Log.LogInfo($"Computing stage for {ToRender.Value.ItemKey}");
+
+            RenderSettings = new StageSettings(ToRender.Value.GrabbableObject, ToRender.Value.OverrideHolder);
+
+            Stage.CenterObjectOnPivot(RenderSettings);
+
+            RuntimeIcons.Log.LogInfo(
+                $"CenterOnPivot: offset {RenderSettings.Position} rotation {RenderSettings.Rotation.eulerAngles}");
+
+            Stage.FindOptimalRotation(RenderSettings);
+
+            RuntimeIcons.Log.LogInfo(
+                $"RotateForCamera: offset {RenderSettings.Position} rotation {RenderSettings.Rotation.eulerAngles}");
+
+            Stage.PrepareCameraForShot(RenderSettings);
+
+            RuntimeIcons.Log.LogInfo($"Camera Offset: {RenderSettings.CameraOffset}");
+            RuntimeIcons.Log.LogInfo(
+                $"Camera {(StageCamera.orthographic ? "orthographicSize" : "field of view")}: {(StageCamera.orthographic ? StageCamera.orthographicSize : StageCamera.fieldOfView)}");
+
+            Stage.NewCameraTexture();
+        }
+        catch (Exception ex)
+        {
+            var key = ToRender.Value.ItemKey;
+            ToRender = null;
+            RenderSettings = null;
+            StageCamera.enabled = false;
+            RuntimeIcons.Log.LogError($"Error Computing {key}:\n{ex}");
+        }
+
     }
 
     private StageComponent.IsolateStageLights _isolatorHolder;
@@ -185,58 +223,22 @@ public class CameraQueueComponent : MonoBehaviour
             return;
             
         var renderingTarget = ToRender.Value;
-        var grabbableObject = renderingTarget.GrabbableObject;
-        var overrideHolder = renderingTarget.OverrideHolder;
         var key = renderingTarget.ItemKey;
         
         try
         {
-            Quaternion rotation;
-            if (overrideHolder is { ItemRotation: not null })
-            {
-                rotation = Quaternion.Euler(overrideHolder.ItemRotation.Value + new Vector3(0, 90f, 0));
-            }
-            else
-            {
-                rotation = Quaternion.Euler(grabbableObject.itemProperties.restingRotation.x,
-                    grabbableObject.itemProperties.floorYOffset + 90f,
-                    grabbableObject.itemProperties.restingRotation.z);
-            }
-
             RuntimeIcons.Log.LogInfo($"Setting stage for {key}");
 
-            Stage.SetObjectOnStage(grabbableObject);
+            Stage.SetStageFromSettings(RenderSettings);
 
-            Stage.CenterObjectOnPivot(rotation);
-
-            RuntimeIcons.Log.LogInfo(
-                $"StagedObject offset {Stage.StagedTransform.localPosition} rotation {Stage.StagedTransform.localRotation.eulerAngles}");
-
-            if (overrideHolder is { StageRotation: not null })
-            {
-                Stage.PivotTransform.rotation = Quaternion.Euler(overrideHolder.StageRotation.Value);
-            }
-            else
-            {
-                Stage.FindOptimalRotation();
-            }
-
-            RuntimeIcons.Log.LogInfo($"Stage rotation {Stage.PivotTransform.rotation.eulerAngles}");
-
-            Stage.PrepareCameraForShot();
-            
-            RuntimeIcons.Log.LogInfo($"Camera {(camera.orthographic?"orthographicSize":"field of view")}: {(camera.orthographic?camera.orthographicSize:camera.fieldOfView)}");
-
-            _isolatorHolder = new StageComponent.IsolateStageLights(Stage.PivotGo, Stage.LightGo);
+            _isolatorHolder = new StageComponent.IsolateStageLights(RenderSettings.TargetObject.gameObject, Stage.LightGo);
         }
         catch (Exception ex)
         {
             RuntimeIcons.Log.LogError($"Error Rendering {key}\n{ex}");
         }
     }
-
-    private int FrameDelay = 3;
-
+    
     private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
     {
         CameraCleanup();
@@ -284,31 +286,7 @@ public class CameraQueueComponent : MonoBehaviour
         public string ItemKey => _itemKey;
         
     }
-    
-    public struct RenderingResult
-    {
-        private long _targetFrame;
-        private RenderingElement _element;
-        //private GraphicsFence _fence;
-        private RenderTexture _texture;
 
-        public RenderingResult(RenderingElement element, /*GraphicsFence fence,*/ RenderTexture texture, long targetFrame)
-        {
-            _element = element;
-            //_fence = fence;
-            _texture = texture;
-            _targetFrame = targetFrame;
-        }
-
-        public RenderingElement Element => _element;
-
-        //public GraphicsFence Fence => _fence;
-
-        public RenderTexture Texture => _texture;
-
-        public long TargetFrame => _targetFrame;
-    }
-    
     internal static bool ItemHasIcon(RenderingElement element)
     {
         var key = element.ItemKey;
