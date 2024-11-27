@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using RuntimeIcons.Dependency;
 using RuntimeIcons.Patches;
+using RuntimeIcons.Utils;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
-using UnityEngine.SceneManagement;
 using VertexLibrary;
 using VertexLibrary.Caches;
 using static UnityEngine.Rendering.HighDefinition.RenderPipelineSettings;
@@ -17,30 +17,22 @@ namespace RuntimeIcons.Components;
 public class StageComponent : MonoBehaviour
 {
     internal CameraQueueComponent CameraQueue { get; private set; }
-    private StageComponent(){}
+
+    private StageComponent()
+    {
+    }
 
     public IVertexCache VertexCache { get; set; } = VertexesExtensions.GlobalPartialCache;
 
     public GameObject LightGo { get; private set; }
 
-    public GameObject PivotGo
-    {
-        get
-        {
-            if (!_targetGo)
-                _targetGo = CreatePivotGo();
-            return _targetGo;
-        }
-    }
 
     private GameObject CameraGo { get; set; }
 
     public Transform LightTransform => LightGo.transform;
-    public Transform PivotTransform => PivotGo.transform;
     private Transform CameraTransform => CameraGo.transform;
-    
+
     private Camera _camera;
-    private GameObject _targetGo;
     private Vector2Int _resolution = new Vector2Int(128, 128);
 
     private ColorBufferFormat? _originalColorBufferFormat;
@@ -61,8 +53,8 @@ public class StageComponent : MonoBehaviour
 
     public Transform StagedTransform { get; private set; }
     public GrabbableObject StagedItem { get; private set; }
-    
-    private TransformMemory Memory { get;  set; }
+
+    private TransformMemory Memory { get; set; }
 
     private GameObject CreatePivotGo()
     {
@@ -78,7 +70,8 @@ public class StageComponent : MonoBehaviour
         return targetGo;
     }
 
-    public static StageComponent CreateStage(HideFlags hideFlags, int cameraLayerMask = 1, string stageName = "Stage", bool orthographic = false)
+    public static StageComponent CreateStage(HideFlags hideFlags, int cameraLayerMask = 1, string stageName = "Stage",
+        bool orthographic = false)
     {
         //create the root Object for the Stage
         var stageGo = new GameObject(stageName)
@@ -90,7 +83,7 @@ public class StageComponent : MonoBehaviour
         var stageComponent = stageGo.AddComponent<StageComponent>();
 
         //add the stage Lights
-        
+
         var lightsGo = new GameObject("Stage Lights")
         {
             hideFlags = hideFlags,
@@ -100,7 +93,7 @@ public class StageComponent : MonoBehaviour
             }
         };
         stageComponent.LightGo = lightsGo;
-        
+
         //add Camera
         var cameraGo = new GameObject("Camera")
         {
@@ -130,11 +123,13 @@ public class StageComponent : MonoBehaviour
         hdrpCam.clearColorMode = HDAdditionalCameraData.ClearColorMode.Color;
         hdrpCam.backgroundColorHDR = Color.clear;
         hdrpCam.customRenderingSettings = true;
+
         void SetOverride(FrameSettingsField setting, bool enabled)
         {
             hdrpCam.renderingPathCustomFrameSettingsOverrideMask.mask[(uint)setting] = true;
             hdrpCam.renderingPathCustomFrameSettings.SetEnabled(setting, enabled);
         }
+
         SetOverride(FrameSettingsField.CustomPass, false);
         SetOverride(FrameSettingsField.CustomPostProcess, false);
         SetOverride(FrameSettingsField.Tonemapping, false);
@@ -155,37 +150,51 @@ public class StageComponent : MonoBehaviour
         RenderPipelineManager.endCameraRendering += EndCameraRendering;
     }
     
-    public void SetObjectOnStage(GrabbableObject targetItem)
+    public void SetStageFromSettings(StageSettings stageSettings)
     {
-        var targetTransform = targetItem.transform;
-        
+        if (stageSettings == null)
+            throw new ArgumentNullException(nameof(stageSettings));
+
+        var grabbableObject = stageSettings.TargetObject;
+        var targetTransform = stageSettings.TargetTransform;
+
         if (StagedTransform && StagedTransform != targetTransform)
             throw new InvalidOperationException("An Object is already on stage!");
         
-        PivotTransform.parent = null;
-        PivotTransform.position = Vector3.zero;
-        PivotTransform.rotation = Quaternion.identity;
-        SceneManager.MoveGameObjectToScene(PivotGo, targetTransform.gameObject.scene);
-        
         StagedTransform = targetTransform;
-        StagedItem = targetItem;
-        
-        Memory = new TransformMemory(StagedTransform);
-        
-        StagedTransform.SetParent(PivotTransform, false);
-        StagedTransform.localPosition = Vector3.zero;
-    }
-    
-    public void CenterObjectOnPivot(Quaternion? overrideRotation = null)
-    {
-        if (!StagedTransform)
-            throw new InvalidOperationException("No Object on stage!");
+        StagedItem = grabbableObject;
 
-        if (overrideRotation.HasValue)
-            StagedTransform.rotation = overrideRotation.Value;
+        Memory = new TransformMemory(StagedTransform);
+
+        StagedTransform.position = CameraTransform.position + stageSettings._cameraOffset + stageSettings._position;
+        StagedTransform.rotation = stageSettings.Rotation;
+        LightTransform.position = StagedTransform.position;
+    }  
+    
+    public void CenterObjectOnPivot(StageSettings stageSettings)
+    {
+        if (stageSettings == null)
+            throw new ArgumentNullException(nameof(stageSettings));
+
+        var overrideHolder = stageSettings.OverrideHolder;
+        var grabbableObject = stageSettings.TargetObject;
+        var targetTransform = stageSettings.TargetTransform;
         
-        var matrix = Matrix4x4.TRS(Vector3.zero, StagedTransform.rotation, StagedTransform.localScale);
-        
+        Quaternion rotation;
+        if (overrideHolder is { ItemRotation: not null })
+        {
+            rotation = Quaternion.Euler(overrideHolder.ItemRotation.Value + new Vector3(0, 90f, 0));
+        }
+        else
+        {
+            rotation = Quaternion.Euler(grabbableObject.itemProperties.restingRotation.x,
+                grabbableObject.itemProperties.floorYOffset + 90f,
+                grabbableObject.itemProperties.restingRotation.z);
+        }
+
+
+        var matrix = Matrix4x4.TRS(Vector3.zero, rotation, targetTransform.localScale);
+
         var executionOptions = new ExecutionOptions()
         {
             VertexCache = VertexCache,
@@ -193,47 +202,32 @@ public class StageComponent : MonoBehaviour
             LogHandler = RuntimeIcons.VerboseMeshLog,
             OverrideMatrix = matrix
         };
-        
-        if (!StagedTransform.gameObject.TryGetBounds(out var bounds, executionOptions))
+
+        if (!targetTransform.gameObject.TryGetBounds(out var bounds, executionOptions))
             throw new InvalidOperationException("This object has no Renders!");
-        
-        StagedTransform.localPosition = -bounds.center;
-        
+
+        stageSettings._position = -bounds.center;
+        stageSettings._rotation = rotation;
     }
 
-    public void PrepareCameraForShot(Vector3 offset, float fov)
+    public void PrepareCameraForShot(StageSettings stageSettings)
     {
-        if (!StagedTransform)
-            throw new InvalidOperationException("No Object on stage!");
+        if (stageSettings == null)
+            throw new ArgumentNullException(nameof(stageSettings));
         
-        PivotTransform.position = _camera.transform.position + offset;
-        LightTransform.position = PivotTransform.position;
-        if (_camera.orthographic)
-        {
-            _camera.orthographicSize = fov;
-        }
-        else
-        {
-            _camera.fieldOfView = fov;
-        }
-    }
-    
-    public void PrepareCameraForShot()
-    {
-        if (!StagedTransform)
-            throw new InvalidOperationException("No Object on stage!");
+        var targetTransform = stageSettings.TargetTransform;
+        
+        var matrix = Matrix4x4.TRS(stageSettings.Position, stageSettings.Rotation, targetTransform.localScale);
 
-        PivotTransform.position = Vector3.zero;
         var executionOptions = new ExecutionOptions()
         {
             VertexCache = VertexCache,
             CullingMask = CullingMask,
             LogHandler = RuntimeIcons.VerboseMeshLog,
-            OverrideMatrix = PivotTransform.localToWorldMatrix,
+            OverrideMatrix = matrix,
         };
-        var worldToLocal = PivotTransform.worldToLocalMatrix;
 
-        var vertices = PivotGo.GetVertexes(executionOptions);
+        var vertices = targetTransform.GetVertexes(executionOptions);
         if (vertices.Length == 0)
             throw new InvalidOperationException("This object has no Renders!");
 
@@ -243,7 +237,7 @@ public class StageComponent : MonoBehaviour
 
         // Adjust the pivot so that the object doesn't clip into the near plane
         var distanceToCamera = Math.Max(_camera.nearClipPlane + bounds.Value.size.z, 3f);
-        PivotTransform.position = _camera.transform.position - bounds.Value.center + _camera.transform.forward * distanceToCamera;
+        stageSettings._cameraOffset = -bounds.Value.center + Vector3.forward * distanceToCamera;
 
         // Calculate the camera size to fit the object being displayed
         Vector2 marginFraction = MarginPixels / _resolution;
@@ -258,10 +252,10 @@ public class StageComponent : MonoBehaviour
         }
         else
         {
-            var matrix = PivotTransform.localToWorldMatrix * worldToLocal;
+            var updateMatrix = Matrix4x4.TRS(_camera.transform.position + stageSettings._cameraOffset, Quaternion.identity, Vector3.one);
             for (var i = 0; i < vertices.Length; i++)
-                vertices[i] = matrix.MultiplyPoint3x4(vertices[i]);
-
+                vertices[i] = updateMatrix.MultiplyPoint3x4(vertices[i]);
+            
             const int iterations = 2;
 
             float angleMinX, angleMaxX;
@@ -280,11 +274,11 @@ public class StageComponent : MonoBehaviour
             GetCameraAngles(_camera, -CameraTransform.up, vertices, out angleMinX, out angleMaxX);
 
             var fovAngleX = Math.Max(-angleMinX, angleMaxX) * 2 * fovScale.y;
-            var fovAngleY = Camera.HorizontalToVerticalFieldOfView(Math.Max(-angleMinY, angleMaxY) * 2, _camera.aspect) * fovScale.x;
+            var fovAngleY =
+                Camera.HorizontalToVerticalFieldOfView(Math.Max(-angleMinY, angleMaxY) * 2, _camera.aspect) *
+                fovScale.x;
             _camera.fieldOfView = Math.Max(fovAngleX, fovAngleY);
         }
-
-        LightTransform.position = PivotTransform.position;
     }
 
     public void ResetStage()
@@ -294,64 +288,16 @@ public class StageComponent : MonoBehaviour
             StagedTransform.SetParent(Memory.Parent, false);
 
             StagedTransform.localScale = Memory.LocalScale;
-            StagedTransform.SetLocalPositionAndRotation(Memory.LocalPosition,Memory.LocalRotation);
+            StagedTransform.SetLocalPositionAndRotation(Memory.LocalPosition, Memory.LocalRotation);
         }
 
         StagedTransform = null;
         StagedItem = null;
         Memory = default;
-        
-        PivotTransform.parent = null;
-        PivotTransform.position = transform.position;
-        PivotTransform.rotation = Quaternion.identity;
+
         LightTransform.localPosition = Vector3.zero;
         LightTransform.rotation = Quaternion.identity;
         CameraTransform.localRotation = Quaternion.identity;
-    }
-
-    public Texture2D TakeSnapshot()
-    {
-        return TakeSnapshot(Color.clear);
-    }
-    
-    public Texture2D TakeSnapshot(Color backgroundColor)
-    {
-        // Set the background color of the camera
-        _camera.backgroundColor = backgroundColor;
-
-        // Get a temporary render texture and render the camera
-
-        var destTexture = NewCameraTexture();
-
-        using (new IsolateStageLights(PivotGo, LightGo))
-        {
-            _camera.Render();
-        }
-
-        // Activate the temporary render texture
-        var previouslyActiveRenderTexture = RenderTexture.active;
-        RenderTexture.active = destTexture;
-
-        // Extract the image into a new texture without mipmaps
-        var texture = new Texture2D(destTexture.width, destTexture.height, GraphicsFormat.R16G16B16A16_SFloat, 1, TextureCreationFlags.DontInitializePixels)
-        {
-            name = $"{nameof(RuntimeIcons)}.{StagedTransform.name}Texture",
-            filterMode = FilterMode.Point,
-        };
-        
-        texture.ReadPixels(new Rect(0, 0, destTexture.width, destTexture.height), 0, 0);
-        texture.Apply();
-        
-        // Reactivate the previously active render texture
-        RenderTexture.active = previouslyActiveRenderTexture;
-        
-        // Clean up after ourselves
-        _camera.targetTexture = null;
-        RenderTexture.ReleaseTemporary(destTexture);
-        
-        RuntimeIcons.Log.LogInfo($"{texture.name} Rendered");
-        // Return the texture
-        return texture;
     }
 
     private void SetAlphaEnabled(bool enabled)
@@ -404,7 +350,7 @@ public class StageComponent : MonoBehaviour
     {
         private readonly HashSet<Light> _lightMemory;
         private readonly Color _ambientLight;
-        
+
         public IsolateStageLights(params GameObject[] stageObjects)
         {
             _lightMemory = UnityEngine.Pool.HashSetPool<Light>.Get();
@@ -419,7 +365,8 @@ public class StageComponent : MonoBehaviour
                 localLights.AddRange(lights);
             }
 
-            var globalLights = FindObjectsOfType<Light>().Where(l => !localLights.Contains(l)).Where(l => l.enabled).ToArray();
+            var globalLights = FindObjectsOfType<Light>().Where(l => !localLights.Contains(l)).Where(l => l.enabled)
+                .ToArray();
 
             foreach (var light in globalLights)
             {
@@ -431,7 +378,7 @@ public class StageComponent : MonoBehaviour
         public void Dispose()
         {
             RenderSettings.ambientLight = _ambientLight;
-            
+
             foreach (var light in _lightMemory)
             {
                 light.enabled = true;
@@ -457,7 +404,8 @@ public class StageComponent : MonoBehaviour
         }
     }
 
-    private static void GetCameraAngles(Camera camera, Vector3 direction, IEnumerable<Vector3> vertices, out float angleMin, out float angleMax)
+    private static void GetCameraAngles(Camera camera, Vector3 direction, IEnumerable<Vector3> vertices,
+        out float angleMin, out float angleMax)
     {
         var position = camera.transform.position;
         var forwardPlane = new Plane(camera.transform.forward, position);
@@ -476,90 +424,125 @@ public class StageComponent : MonoBehaviour
         angleMax = Mathf.Atan(tangentMax) * Mathf.Rad2Deg;
     }
 
-    public void FindOptimalRotation()
+    public void FindOptimalRotation(StageSettings stageSettings)
     {
-        var pivotTransform = PivotTransform;
-        pivotTransform.rotation = Quaternion.identity;
+        if (stageSettings == null)
+            throw new ArgumentNullException(nameof(stageSettings));
         
-        pivotTransform.rotation = Quaternion.identity;
+        var overrideHolder = stageSettings.OverrideHolder;
+        var targetObject = stageSettings.TargetObject;
+        var targetItem = targetObject.itemProperties;
+        var targetTransform = stageSettings.TargetTransform;
         
-        var executionOptions = new ExecutionOptions()
-        {
-            VertexCache = VertexCache,
-            CullingMask = CullingMask,
-            LogHandler = RuntimeIcons.VerboseMeshLog
-        };
-        
-        if (!pivotTransform.TryGetBounds(out var bounds, executionOptions))
-            throw new InvalidOperationException("This object has no Renders!");
+        Quaternion targetRotation = Quaternion.identity;
 
-        if (bounds.size == Vector3.zero)
-            throw new InvalidOperationException("This object has no Bounds!");
-
-        if (bounds.size.y < bounds.size.x / 2f && bounds.size.y <  bounds.size.z / 2f)
+        if (overrideHolder is { StageRotation: not null })
         {
-            if (bounds.size.z < bounds.size.x * 0.5f)
-            {
-                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -45 y | 1");
-                pivotTransform.Rotate(Vector3.up, -45, Space.World);
-            }
-            else if (bounds.size.z < bounds.size.x * 0.85f)
-            {
-                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -90 y | 2");
-                pivotTransform.Rotate(Vector3.up, -90, Space.World);
-            }
-            else if (bounds.size.x < bounds.size.z * 0.5f)
-            {
-                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -90 y | 3");
-                pivotTransform.Rotate(Vector3.up, -45, Space.World);
-            }
-            
-            RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -80 x");
-            pivotTransform.Rotate(Vector3.right, -80, Space.World);
-            
-            RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated 15 y");
-            pivotTransform.Rotate(Vector3.up, 15, Space.World);
+            targetRotation = Quaternion.Euler(overrideHolder.StageRotation.Value);
         }
         else
         {
-            if (bounds.size.x < bounds.size.z * 0.85f)
+            
+            var matrix = Matrix4x4.TRS(stageSettings.Position, stageSettings.Rotation, targetTransform.localScale);
+            
+            var executionOptions = new ExecutionOptions()
             {
-                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -25 x | 1");
-                pivotTransform.Rotate(Vector3.right, -25, Space.World);
-                
-                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -45 y | 1");
-                pivotTransform.Rotate(Vector3.up, -45, Space.World);
-            }
-            else if ((Mathf.Abs(bounds.size.y - bounds.size.x) / bounds.size.x < 0.01f) && bounds.size.x < bounds.size.z * 0.85f)
+                VertexCache = VertexCache,
+                CullingMask = CullingMask,
+                LogHandler = RuntimeIcons.VerboseMeshLog,
+                OverrideMatrix = matrix
+            };
+
+            if (!targetTransform.TryGetBounds(out var bounds, executionOptions))
+                throw new InvalidOperationException("This object has no Renders!");
+
+            if (bounds.size == Vector3.zero)
+                throw new InvalidOperationException("This object has no Bounds!");
+
+            if (bounds.size.y < bounds.size.x / 2f && bounds.size.y < bounds.size.z / 2f)
             {
-                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -25 x | 2");
-                pivotTransform.Rotate(Vector3.right, -25, Space.World);
-                
-                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated 45 y | 2");
-                pivotTransform.Rotate(Vector3.up, 45, Space.World);
-            }
-            else if ((Mathf.Abs(bounds.size.y - bounds.size.z) / bounds.size.z < 0.01f) && bounds.size.z < bounds.size.x * 0.85f)
-            {
-                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated 25 z | 3");
-                pivotTransform.Rotate(Vector3.forward, 25, Space.World);
-                
-                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -45 y | 3");
-                pivotTransform.Rotate(Vector3.up, -45, Space.World);
-            }
-            else if (bounds.size.y < bounds.size.x / 2f || bounds.size.x < bounds.size.y / 2f)
-            {
-                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated 45 z | 4");
-                pivotTransform.Rotate(Vector3.forward, 45, Space.World);
-                
-                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -25 x | 4");
-                pivotTransform.Rotate(Vector3.right, -25, Space.World);
+                if (bounds.size.z < bounds.size.x * 0.5f)
+                {
+                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -45 y | 1");
+
+                    targetRotation = Quaternion.AngleAxis(-45, Vector3.up) * targetRotation;
+                }
+                else if (bounds.size.z < bounds.size.x * 0.85f)
+                {
+                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -90 y | 2");
+
+                    targetRotation = Quaternion.AngleAxis(-90, Vector3.up) * targetRotation;
+                }
+                else if (bounds.size.x < bounds.size.z * 0.5f)
+                {
+                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -90 y | 3");
+
+                    targetRotation = Quaternion.AngleAxis(-45, Vector3.up) * targetRotation;
+                }
+
+                RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -80 x");
+
+                targetRotation = Quaternion.AngleAxis(-80, Vector3.right) * targetRotation;
+
+                RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated 15 y");
+
+                targetRotation = Quaternion.AngleAxis(-15, Vector3.up) * targetRotation;
             }
             else
             {
-                RuntimeIcons.Log.LogDebug($"{StagedItem.itemProperties.itemName} rotated -25 x | 5");
-                pivotTransform.Rotate(Vector3.right, -25, Space.World);
+                if (bounds.size.x < bounds.size.z * 0.85f)
+                {
+                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -25 x | 1");
+
+                    targetRotation = Quaternion.AngleAxis(-25, Vector3.right) * targetRotation;
+
+                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -45 y | 1");
+
+                    targetRotation = Quaternion.AngleAxis(-45, Vector3.up) * targetRotation;
+                }
+                else if ((Mathf.Abs(bounds.size.y - bounds.size.x) / bounds.size.x < 0.01f) &&
+                         bounds.size.x < bounds.size.z * 0.85f)
+                {
+                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -25 x | 2");
+
+                    targetRotation = Quaternion.AngleAxis(-25, Vector3.right) * targetRotation;
+
+                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated 45 y | 2");
+
+                    targetRotation = Quaternion.AngleAxis(45, Vector3.up) * targetRotation;
+                }
+                else if ((Mathf.Abs(bounds.size.y - bounds.size.z) / bounds.size.z < 0.01f) &&
+                         bounds.size.z < bounds.size.x * 0.85f)
+                {
+                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated 25 z | 3");
+
+                    targetRotation = Quaternion.AngleAxis(25, Vector3.forward) * targetRotation;
+
+                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -45 y | 3");
+
+                    targetRotation = Quaternion.AngleAxis(-45, Vector3.up) * targetRotation;
+                }
+                else if (bounds.size.y < bounds.size.x / 2f || bounds.size.x < bounds.size.y / 2f)
+                {
+                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated 45 z | 4");
+
+                    targetRotation = Quaternion.AngleAxis(45, Vector3.forward) * targetRotation;
+
+                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -25 x | 4");
+
+                    targetRotation = Quaternion.AngleAxis(25, Vector3.up) * targetRotation;
+                }
+                else
+                {
+                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -25 x | 5");
+
+                    targetRotation = Quaternion.AngleAxis(-25, Vector3.right) * targetRotation;
+                }
             }
         }
+
+        stageSettings._position = targetRotation * stageSettings._position;
+        stageSettings._rotation = targetRotation * stageSettings._rotation;
     }
 
     internal RenderTexture NewCameraTexture()
