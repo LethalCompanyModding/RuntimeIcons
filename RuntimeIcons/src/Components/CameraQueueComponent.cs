@@ -171,30 +171,30 @@ public class CameraQueueComponent : MonoBehaviour
         
         if (!ToRender.HasValue)
             return;
+        
         try
         {
-            //compute transform and FOV
+            //pre-compute transform and FOV
 
             RuntimeIcons.Log.LogInfo($"Computing stage for {ToRender.Value.ItemKey}");
 
             RenderSettings = new StageSettings(ToRender.Value.GrabbableObject, ToRender.Value.OverrideHolder);
 
-            Stage.CenterObjectOnPivot(RenderSettings);
+            var (targetPosition, targetRotation) = Stage.CenterObjectOnPivot(RenderSettings);
 
+            RuntimeIcons.Log.LogInfo($"Item: offset {targetPosition} rotation {targetRotation}");
+
+            var ( _, stageRotation) = Stage.FindOptimalRotation(RenderSettings);
+
+            RuntimeIcons.Log.LogInfo($"Stage: rotation {stageRotation.eulerAngles}");
+
+            var ( cameraOffset, cameraFov) = Stage.PrepareCameraForShot(RenderSettings);
+
+            RuntimeIcons.Log.LogInfo($"Camera Offset: {cameraOffset}");
             RuntimeIcons.Log.LogInfo(
-                $"CenterOnPivot: offset {RenderSettings.Position} rotation {RenderSettings.Rotation.eulerAngles}");
+                $"Camera {(StageCamera.orthographic ? "orthographicSize" : "field of view")}: {cameraFov}");
 
-            Stage.FindOptimalRotation(RenderSettings);
-
-            RuntimeIcons.Log.LogInfo(
-                $"RotateForCamera: offset {RenderSettings.Position} rotation {RenderSettings.Rotation.eulerAngles}");
-
-            Stage.PrepareCameraForShot(RenderSettings);
-
-            RuntimeIcons.Log.LogInfo($"Camera Offset: {RenderSettings.CameraOffset}");
-            RuntimeIcons.Log.LogInfo(
-                $"Camera {(StageCamera.orthographic ? "orthographicSize" : "field of view")}: {(StageCamera.orthographic ? StageCamera.orthographicSize : StageCamera.fieldOfView)}");
-
+            //initialize destination texture before the rendering loop
             Stage.NewCameraTexture();
         }
         catch (Exception ex)
@@ -246,45 +246,49 @@ public class CameraQueueComponent : MonoBehaviour
 
     private void CameraCleanup()
     {
-        //cleanup
-        if (Stage.StagedTransform)
+        try
         {
-            Stage.ResetStage();
-        }
+            //cleanup
+            if (Stage.StagedTransform)
+            {
+                Stage.ResetStage();
+            }
 
-        //re-enable lights if we had an isolator active
-        if (_isolatorHolder != null)
+            //re-enable lights if we had an isolator active
+            if (_isolatorHolder != null)
+            {
+                _isolatorHolder.Dispose();
+                _isolatorHolder = null;
+            }
+        }catch (Exception ex)
         {
-            _isolatorHolder.Dispose();
-            _isolatorHolder = null;
+            RuntimeIcons.Log.LogFatal($"Exception Resetting Stage: \n{ex}");
         }
     }
     
     public struct RenderingElement
     {
-        private readonly GrabbableObject _grabbableObject;
-        private readonly Sprite _errorSprite;
-        private readonly OverrideHolder _overrideHolder;
-        private readonly string _itemKey;
 
         public RenderingElement(GrabbableObject grabbableObject, Sprite errorSprite)
         {
-            _grabbableObject = grabbableObject;
-            _errorSprite = errorSprite;
+            GrabbableObject = grabbableObject;
+            ErrorSprite = errorSprite;
             
-            _itemKey = CategorizeItemPatch.GetPathForItem(grabbableObject.itemProperties)
+            ItemKey = CategorizeItemPatch.GetPathForItem(grabbableObject.itemProperties)
                 .Replace(Path.DirectorySeparatorChar, '/');
 
-            RuntimeIcons.OverrideMap.TryGetValue(_itemKey, out _overrideHolder);
+            RuntimeIcons.OverrideMap.TryGetValue(ItemKey, out var overrideHolder);
+
+            OverrideHolder = overrideHolder;
         }
 
-        public GrabbableObject GrabbableObject => _grabbableObject;
+        public GrabbableObject GrabbableObject { get; }
 
-        public Sprite ErrorSprite => _errorSprite;
-        public OverrideHolder OverrideHolder => _overrideHolder;
+        public Sprite ErrorSprite { get; }
+
+        public OverrideHolder OverrideHolder { get; }
         
-        public string ItemKey => _itemKey;
-        
+        public string ItemKey { get; }
     }
 
     internal static bool ItemHasIcon(RenderingElement element)
@@ -316,5 +320,5 @@ public class CameraQueueComponent : MonoBehaviour
         
         return true;
     }
-
+    
 }
