@@ -56,20 +56,6 @@ public class StageComponent : MonoBehaviour
 
     private TransformMemory Memory { get; set; }
 
-    private GameObject CreatePivotGo()
-    {
-        //add the StageTarget
-        var targetGo = new GameObject($"{transform.name}.Pivot")
-        {
-            transform =
-            {
-                position = transform.position,
-                rotation = transform.rotation
-            }
-        };
-        return targetGo;
-    }
-
     public static StageComponent CreateStage(HideFlags hideFlags, int cameraLayerMask = 1, string stageName = "Stage",
         bool orthographic = false)
     {
@@ -171,7 +157,7 @@ public class StageComponent : MonoBehaviour
         LightTransform.position = StagedTransform.position;
     }  
     
-    public void CenterObjectOnPivot(StageSettings stageSettings)
+    public (Vector3 position, Quaternion rotation) CenterObjectOnPivot(StageSettings stageSettings)
     {
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
@@ -208,9 +194,11 @@ public class StageComponent : MonoBehaviour
 
         stageSettings._position = -bounds.center;
         stageSettings._rotation = rotation;
+
+        return (stageSettings.Position, stageSettings.Rotation);
     }
 
-    public void PrepareCameraForShot(StageSettings stageSettings)
+    public (Vector3 offset, float fov) PrepareCameraForShot(StageSettings stageSettings)
     {
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
@@ -249,6 +237,7 @@ public class StageComponent : MonoBehaviour
             var sizeX = bounds.Value.extents.x * fovScale.x * _camera.aspect;
             var size = Math.Max(sizeX, sizeY);
             _camera.orthographicSize = size;
+            return (stageSettings._cameraOffset, _camera.orthographicSize);
         }
         else
         {
@@ -278,6 +267,7 @@ public class StageComponent : MonoBehaviour
                 Camera.HorizontalToVerticalFieldOfView(Math.Max(-angleMinY, angleMaxY) * 2, _camera.aspect) *
                 fovScale.x;
             _camera.fieldOfView = Math.Max(fovAngleX, fovAngleY);
+            return (stageSettings._cameraOffset, _camera.fieldOfView);
         }
     }
 
@@ -424,7 +414,7 @@ public class StageComponent : MonoBehaviour
         angleMax = Mathf.Atan(tangentMax) * Mathf.Rad2Deg;
     }
 
-    public void FindOptimalRotation(StageSettings stageSettings)
+    public (Vector3 position, Quaternion rotation) FindOptimalRotation(StageSettings stageSettings)
     {
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
@@ -543,6 +533,8 @@ public class StageComponent : MonoBehaviour
 
         stageSettings._position = targetRotation * stageSettings._position;
         stageSettings._rotation = targetRotation * stageSettings._rotation;
+
+        return (Vector3.zero, targetRotation);
     }
 
     internal RenderTexture NewCameraTexture()
