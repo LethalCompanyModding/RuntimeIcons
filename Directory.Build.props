@@ -65,12 +65,13 @@
 
         <ItemGroup>
             <OutputFiles Include="$(OutDir)\**" Exclude="**\*.deps.json" />
+            <OutputFiles Include="$(ProjectDir)\UnityAssets\AssetBundles\StandaloneWindows\runtimeicons.unity3d" />
         </ItemGroup>
         <Copy
             SourceFiles="@(OutputFiles)"
             DestinationFolder="$(PluginsDir)"
         />
-        
+
         <ItemGroup>
             <OverrideFiles Include="$(ProjectDir)\resources\**\*.png" />
             <OverrideFiles Include="$(ProjectDir)\resources\**\*.json" />

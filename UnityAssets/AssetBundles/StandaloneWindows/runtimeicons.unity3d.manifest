@@ -1,0 +1,20 @@
+ManifestFileVersion: 0
+CRC: 1626042800
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: f3f3c43794c468b020d5a9beb122f769
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 17a3557cae3d0f9916dbe762213cf068
+  IncrementalBuildHash:
+    serializedVersion: 2
+    Hash: f3f3c43794c468b020d5a9beb122f769
+HashAppended: 0
+ClassTypes:
+- Class: 72
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/Shaders/UnpremultiplyAndCountTransparent.compute
+Dependencies: []

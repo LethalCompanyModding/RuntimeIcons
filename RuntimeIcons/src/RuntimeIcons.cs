@@ -15,6 +15,7 @@ using RuntimeIcons.Dependency;
 using RuntimeIcons.Patches;
 using RuntimeIcons.Utils;
 using UnityEngine;
+using UnityEngine.Assertions;
 using UnityEngine.Rendering.HighDefinition;
 using LogType = VertexLibrary.LogType;
 
@@ -78,6 +79,10 @@ public class RuntimeIcons : BaseUnityPlugin
 
             CategorizeItemPatch.Init();
             Harmony.PatchAll();
+
+            string assemblyPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            var assetBundle = AssetBundle.LoadFromFile(Path.Combine(assemblyPath, "runtimeicons.unity3d"));
+            UnpremultiplyAndCountTransparent.LoadShaders(assetBundle);
 
             Log.LogInfo(NAME + " v" + VERSION + " Loaded!");
         }
