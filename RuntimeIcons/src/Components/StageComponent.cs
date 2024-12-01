@@ -44,6 +44,7 @@ public class StageComponent : MonoBehaviour
         {
             _resolution = value;
             _camera.aspect = (float)_resolution.x / _resolution.y;
+            CreateRenderTexture();
         }
     }
 
@@ -121,13 +122,26 @@ public class StageComponent : MonoBehaviour
         SetOverride(FrameSettingsField.Tonemapping, false);
         SetOverride(FrameSettingsField.ColorGrading, false);
 
-        stageComponent.NewCameraTexture();
-
         var cameraQueue = cameraGo.AddComponent<CameraQueueComponent>();
         cameraQueue.Stage = stageComponent;
         stageComponent.CameraQueue = cameraQueue;
 
+        stageComponent.CreateRenderTexture();
+
         return stageComponent;
+    }
+
+    private void CreateRenderTexture()
+    {
+        _camera.targetTexture = new RenderTexture(
+            Resolution.x,
+            Resolution.y,
+            depth: 0,
+            GraphicsFormat.R16G16B16A16_SFloat,
+            mipCount: 1)
+        {
+            enableRandomWrite = true,
+        };
     }
 
     private void Awake()
@@ -535,14 +549,5 @@ public class StageComponent : MonoBehaviour
         stageSettings._rotation = targetRotation * stageSettings._rotation;
 
         return (Vector3.zero, targetRotation);
-    }
-
-    internal RenderTexture NewCameraTexture()
-    {
-        var destTexture = RenderTexture.GetTemporary(
-            Resolution.x,
-            Resolution.y, 8, GraphicsFormat.R16G16B16A16_SFloat);
-        _camera.targetTexture = destTexture;
-        return destTexture;
     }
 }

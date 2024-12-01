@@ -7,13 +7,9 @@ to be considered MIT licensed
 
 using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using BepInEx;
-using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
-using Object = UnityEngine.Object;
 
 namespace RuntimeIcons.Utils;
 
@@ -53,63 +49,5 @@ public static class TextureUtils
     public static FileInfo SaveEXR (this Texture2D tex, string filename = "", string directory = "")
     {
         return SaveFile(tex.EncodeToEXR(), filename.IsNullOrWhiteSpace() ? tex.name : filename, directory.IsNullOrWhiteSpace() ? "" : directory, ".exr");
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct RGBA(half r, half g, half b, half a)
-    {
-        public half r = r;
-        public half g = g;
-        public half b = b;
-        public half a = a;
-
-        public static implicit operator Color(RGBA color)
-        {
-            return new Color(color.r, color.g, color.b, color.a);
-        }
-
-        public static implicit operator RGBA(Color color)
-        {
-            return new RGBA((half)color.r, (half)color.g, (half)color.b, (half)color.a);
-        }
-    }
-
-    public static Texture2D GetNonPremultipliedTexture(this Texture2D tex)
-    {
-        
-        var newTex = Object.Instantiate(tex);
-        newTex.name = $"{tex.name}-NonPremultiplied";
-        
-        newTex.UnPremultiply();
-
-        return newTex;
-    }
-    
-    public static void UnPremultiply(this Texture2D tex)
-    {
-        if (tex.graphicsFormat != GraphicsFormat.R16G16B16A16_SFloat)
-            throw new NotImplementedException("Texture to un-premultiply must have 16-bit floating point components");
-
-        var pixels = tex.GetPixelData<RGBA>(0);
-        for (var i = 0; i < pixels.Length; i++)
-        {
-            RGBA color = pixels[i];
-            if (color.a == 0)
-                continue;
-            color.r /= color.a;
-            color.g /= color.a;
-            color.b /= color.a;
-            pixels[i] = color;
-        }
-    }
-    
-    public static long GetTransparentCount(this Texture2D tex)
-    {
-        var count = 0;
-        for (var x = 0; x < tex.width; x++)
-        for (var y = 0; y < tex.height; y++)
-            if (tex.GetPixel(x, y).a == 0)
-                count++;
-        return count;
     }
 }

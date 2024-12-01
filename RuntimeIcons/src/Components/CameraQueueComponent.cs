@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using BepInEx;
 using RuntimeIcons.Config;
 using RuntimeIcons.Dotnet.Backports;
 using RuntimeIcons.Patches;
 using RuntimeIcons.Utils;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -13,16 +15,43 @@ namespace RuntimeIcons.Components;
 
 public class CameraQueueComponent : MonoBehaviour
 {
-    internal PriorityQueue<RenderingElement, long> RenderingQueue { get; } = new (50);
-    
+    private readonly PriorityQueue<RenderingElement, long> _renderingQueue = new (50);
+
+    private readonly List<RenderingElement> _renderedItems = [];
+
     private Camera StageCamera { get; set; }
     internal StageComponent Stage { get; set; }
-    
+
     private void Start()
     {
         StageCamera = GetComponent<Camera>();
         RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
         RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
+    }
+
+    private class RenderingElement
+    {
+        internal readonly GrabbableObject _grabbableObject;
+
+        internal readonly Sprite _errorSprite;
+
+        internal readonly string _itemKey;
+        internal readonly OverrideHolder _override;
+
+        internal Texture2D _texture;
+        internal GraphicsFence? _renderFence;
+        internal int _transparentCountID;
+
+        public RenderingElement(GrabbableObject grabbableObject, Sprite errorSprite)
+        {
+            _grabbableObject = grabbableObject;
+            _errorSprite = errorSprite;
+
+            _itemKey = CategorizeItemPatch.GetPathForItem(grabbableObject.itemProperties)
+                .Replace(Path.DirectorySeparatorChar, '/');
+
+            _override = RuntimeIcons.OverrideMap.GetValueOrDefault(_itemKey);
+        }
     }
 
     public bool EnqueueObject(GrabbableObject grabbableObject, Sprite errorSprite = null, long delay = 0)
@@ -34,178 +63,171 @@ public class CameraQueueComponent : MonoBehaviour
             errorSprite = RuntimeIcons.ErrorSprite;
         
         var queueElement = new RenderingElement(grabbableObject, errorSprite);
-        var key = queueElement.ItemKey;
+        var key = queueElement._itemKey;
 
         if (ItemHasIcon(queueElement))
             return false;
         
         RuntimeIcons.Log.LogWarning($"Computing {key} icon");
         
-        if (queueElement.OverrideHolder?.OverrideSprite)
+        if (queueElement._override?.OverrideSprite)
         {
-            RuntimeIcons.Log.LogWarning($"Using static icon from {queueElement.OverrideHolder.Source} for {key}");
-            grabbableObject.itemProperties.itemIcon = queueElement.OverrideHolder.OverrideSprite;
+            grabbableObject.itemProperties.itemIcon = queueElement._override.OverrideSprite;
             HudUtils.UpdateIconsInHUD(grabbableObject.itemProperties);
-            RuntimeIcons.Log.LogInfo($"{key} now has a new icon");
+            RuntimeIcons.Log.LogDebug($"{key} now has a new icon from {queueElement._override.Source}");
             return true;
         }
         
         grabbableObject.itemProperties.itemIcon = RuntimeIcons.LoadingSprite;
         HudUtils.UpdateIconsInHUD(grabbableObject.itemProperties);
 
-        RenderingQueue.Enqueue(queueElement, Time.frameCount + delay);
+        _renderingQueue.Enqueue(queueElement, Time.frameCount + delay);
 
         return true;
     }
-    
-    private RenderingElement? ToRender { get; set; }
+
+    private bool PullLastRender(RenderingElement render)
+    {
+        // Check if the fence has passed, and if it has, remove the fence so that
+        // subsequent calls pass this check without querying the fence.
+        if (render._renderFence.HasValue && !render._renderFence.Value.passed)
+            return false;
+        render._renderFence = null;
+
+        if (!UnpremultiplyAndCountTransparent.TryGetTransparentCount(render._transparentCountID, out var transparentCount))
+            return false;
+
+        var texture = render._texture;
+
+        var totalPixels = texture.width * texture.height;
+        var ratio = transparentCount / (float)totalPixels;
+
+        var grabbableObject = render._grabbableObject;
+        var key = render._itemKey;
+
+        try
+        {
+            if (ratio < PluginConfig.TransparencyRatio)
+            {
+                // Use SpriteMeshType.FullRect, as Unity apparently gets very confused when creating a tight mesh
+                // around our generated texture at runtime, cutting it off on the top or the bottom.
+                var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
+                    new Vector2(texture.width / 2f, texture.height / 2f), 100f, 0u, SpriteMeshType.FullRect);
+                sprite.name = sprite.texture.name =
+                    $"{nameof(RuntimeIcons)}.{grabbableObject.itemProperties.itemName}";
+                grabbableObject.itemProperties.itemIcon = sprite;
+                RuntimeIcons.Log.LogDebug($"{key} now has a new icon: {sprite.texture == texture}");
+            }
+            else
+            {
+                RuntimeIcons.Log.LogError($"{key} Generated {ratio * 100}% Empty Sprite!");
+                grabbableObject.itemProperties.itemIcon = render._errorSprite;
+                Destroy(texture);
+            }
+        }
+        catch (Exception ex)
+        {
+            RuntimeIcons.Log.LogError($"Error generating {key}\n{ex}");
+            grabbableObject.itemProperties.itemIcon = render._errorSprite;
+        }
+
+        HudUtils.UpdateIconsInHUD(grabbableObject.itemProperties);
+        return true;
+    }
+
     private StageSettings RenderSettings { get; set; }
-    
-    private void Update()
+    private RenderingElement _nextRender = null;
+
+    private void PrepareForNextRender()
     {
         var currentFrame = Time.frameCount;
-        
-        if (ToRender.HasValue)
-        {
-            var targetElement = ToRender.Value;
-            var grabbableObject = targetElement.GrabbableObject;
-            var key = targetElement.ItemKey;
-            var errorSprite = targetElement.ErrorSprite;
 
-            try
-            {
-                //TODO enqueue compute shaders
-                //TODO add callback to compute shader finish
-
-                // Activate the temporary render texture
-                var previouslyActiveRenderTexture = RenderTexture.active;
-
-                var srcTexture = StageCamera.targetTexture;
-                RenderTexture.active = srcTexture;
-
-                // Extract the image into a new texture without mipmaps
-                var texture = new Texture2D(srcTexture.width, srcTexture.height, GraphicsFormat.R16G16B16A16_SFloat,
-                    1,
-                    TextureCreationFlags.DontInitializePixels)
-                {
-                    name =
-                        $"{nameof(RuntimeIcons)}.{grabbableObject.itemProperties.itemName}Texture",
-                    filterMode = FilterMode.Point,
-                };
-
-                texture.ReadPixels(new Rect(0, 0, srcTexture.width, srcTexture.height), 0, 0);
-                texture.Apply();
-
-                // Reactivate the previously active render texture
-                RenderTexture.active = previouslyActiveRenderTexture;
-
-                // Clean up after ourselves
-                StageCamera.targetTexture = null;
-                RenderTexture.ReleaseTemporary(srcTexture);
-
-                // UnPremultiply the texture
-                texture.UnPremultiply();
-                texture.Apply();
-
-                if (PluginConfig.DumpToCache)
-                {
-                    var outputPath = CategorizeItemPatch.GetPathForItem(grabbableObject.itemProperties);
-                    var directory = Path.GetDirectoryName(outputPath) ?? "";
-                    var filename = Path.GetFileName(outputPath);
-
-                    texture.SavePNG(filename,
-                        Path.Combine(Paths.CachePath, $"{nameof(RuntimeIcons)}.PNG", directory));
-
-                    texture.SaveEXR(filename,
-                        Path.Combine(Paths.CachePath, $"{nameof(RuntimeIcons)}.EXR", directory));
-                }
-
-                var transparentCount = texture.GetTransparentCount();
-                var totalPixels = texture.width * texture.height;
-                var ratio = (float)transparentCount / (float)totalPixels;
-
-                if (ratio < PluginConfig.TransparencyRatio)
-                {
-                    var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
-                        new Vector2(texture.width / 2f, texture.height / 2f));
-                    sprite.name = sprite.texture.name =
-                        $"{nameof(RuntimeIcons)}.{grabbableObject.itemProperties.itemName}";
-                    grabbableObject.itemProperties.itemIcon = sprite;
-                    RuntimeIcons.Log.LogInfo($"{key} now has a new icon");
-                }
-                else
-                {
-                    RuntimeIcons.Log.LogError($"{key} Generated {ratio * 100}% Empty Sprite!");
-                    grabbableObject.itemProperties.itemIcon = errorSprite;
-                    Destroy(texture);
-                }
-            }
-            catch (Exception ex)
-            {
-                RuntimeIcons.Log.LogError($"Error generating {key}\n{ex}");
-                grabbableObject.itemProperties.itemIcon = errorSprite;
-            }
-
-            HudUtils.UpdateIconsInHUD(grabbableObject.itemProperties);
-        }
-        
-        ToRender = null;
-        RenderSettings = null;
-
-        while (RenderingQueue.TryPeek(out var target, out var targetFrame))
+        while (_renderingQueue.TryPeek(out _, out var targetFrame))
         {
             if (targetFrame > currentFrame)
                 break;
 
-            var element = RenderingQueue.Dequeue();
+            var toRender = _renderingQueue.Dequeue();
 
-            if (element.GrabbableObject&& !element.GrabbableObject.isPocketed && !ItemHasIcon(element) )
+            if (toRender._grabbableObject && !toRender._grabbableObject.isPocketed && !ItemHasIcon(toRender))
             {
-                ToRender = element;
+                _nextRender = toRender;
                 break;
             }
         }
 
-        //enable the camera if we have something to render
-        StageCamera.enabled = ToRender.HasValue;
-        
-        if (!ToRender.HasValue)
+        if (_nextRender is null)
             return;
-        
+
         try
         {
             //pre-compute transform and FOV
 
-            RuntimeIcons.Log.LogInfo($"Computing stage for {ToRender.Value.ItemKey}");
+            RuntimeIcons.Log.LogDebug($"Computing stage for {_nextRender._itemKey}");
 
-            RenderSettings = new StageSettings(ToRender.Value.GrabbableObject, ToRender.Value.OverrideHolder);
+            RenderSettings = new StageSettings(_nextRender._grabbableObject, _nextRender._override);
 
             var (targetPosition, targetRotation) = Stage.CenterObjectOnPivot(RenderSettings);
 
-            RuntimeIcons.Log.LogInfo($"Item: offset {targetPosition} rotation {targetRotation}");
+            RuntimeIcons.Log.LogDebug($"Item: offset {targetPosition} rotation {targetRotation}");
 
-            var ( _, stageRotation) = Stage.FindOptimalRotation(RenderSettings);
+            var (_, stageRotation) = Stage.FindOptimalRotation(RenderSettings);
 
-            RuntimeIcons.Log.LogInfo($"Stage: rotation {stageRotation.eulerAngles}");
+            RuntimeIcons.Log.LogDebug($"Stage: rotation {stageRotation.eulerAngles}");
 
-            var ( cameraOffset, cameraFov) = Stage.PrepareCameraForShot(RenderSettings);
+            var (cameraOffset, cameraFov) = Stage.PrepareCameraForShot(RenderSettings);
 
-            RuntimeIcons.Log.LogInfo($"Camera Offset: {cameraOffset}");
-            RuntimeIcons.Log.LogInfo(
+            RuntimeIcons.Log.LogDebug($"Camera Offset: {cameraOffset}");
+            RuntimeIcons.Log.LogDebug(
                 $"Camera {(StageCamera.orthographic ? "orthographicSize" : "field of view")}: {cameraFov}");
 
-            //initialize destination texture before the rendering loop
-            Stage.NewCameraTexture();
+            // Extract the image into a new texture without mipmaps
+            var targetTexture = StageCamera.targetTexture;
+            _nextRender._texture = new Texture2D(targetTexture.width, targetTexture.height, targetTexture.graphicsFormat,
+                mipCount: 1,
+                TextureCreationFlags.DontInitializePixels)
+            {
+                name =
+                    $"{nameof(RuntimeIcons)}.{RenderSettings.TargetObject.itemProperties.itemName}Texture",
+                filterMode = FilterMode.Point,
+            };
+
+            StageCamera.enabled = true;
         }
         catch (Exception ex)
         {
-            var key = ToRender.Value.ItemKey;
-            ToRender = null;
+            var key = _nextRender._itemKey;
+            _nextRender = null;
             RenderSettings = null;
-            StageCamera.enabled = false;
             RuntimeIcons.Log.LogError($"Error Computing {key}:\n{ex}");
         }
+    }
 
+    private void Update()
+    {
+        if (_renderedItems.Count > 0)
+        {
+            var pullStartTime = Time.realtimeSinceStartupAsDouble;
+
+            var itemToApply = _renderedItems[0];
+            if (PullLastRender(itemToApply))
+                _renderedItems.RemoveAt(0);
+
+            var pullTime = Time.realtimeSinceStartupAsDouble - pullStartTime;
+            RuntimeIcons.Log.LogInfo($"{Time.frameCount}: Pulling count and creating sprite for {itemToApply._itemKey} took {pullTime * 1_000_000} microseconds");
+        }
+
+        StageCamera.enabled = false;
+
+        RenderSettings = null;
+
+        var prepareStartTime = Time.realtimeSinceStartupAsDouble;
+
+        PrepareForNextRender();
+
+        var prepareTime = Time.realtimeSinceStartupAsDouble - prepareStartTime;
+        if (_nextRender != null)
+            RuntimeIcons.Log.LogInfo($"{Time.frameCount}: Preparing to render {_nextRender._itemKey} took {prepareTime * 1_000_000} microseconds");
     }
 
     private StageComponent.IsolateStageLights _isolatorHolder;
@@ -217,17 +239,18 @@ public class CameraQueueComponent : MonoBehaviour
         //if it's not our stage camera do nothing
         if (camera != StageCamera) 
             return;
-        
+
         //if we have something to render
-        if (!ToRender.HasValue) 
+        if (_nextRender is null) 
             return;
-            
-        var renderingTarget = ToRender.Value;
-        var key = renderingTarget.ItemKey;
-        
+
+        var key = _nextRender._itemKey;
+
         try
         {
-            RuntimeIcons.Log.LogInfo($"Setting stage for {key}");
+            _nextRender._grabbableObject.itemProperties.itemIcon = RuntimeIcons.LoadingSprite2;
+
+            RuntimeIcons.Log.LogDebug($"Setting stage for {key}");
 
             Stage.SetStageFromSettings(RenderSettings);
 
@@ -242,6 +265,47 @@ public class CameraQueueComponent : MonoBehaviour
     private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
     {
         CameraCleanup();
+
+        if (camera != StageCamera)
+            return;
+
+        var cmd = new CommandBuffer();
+        var texture = camera.targetTexture;
+        _nextRender._transparentCountID = UnpremultiplyAndCountTransparent.Execute(cmd, texture);
+
+        cmd.CopyTexture(texture, _nextRender._texture);
+        _nextRender._renderFence = cmd.CreateGraphicsFence(GraphicsFenceType.CPUSynchronisation, SynchronisationStageFlags.AllGPUOperations);
+
+        if (PluginConfig.DumpToCache)
+        {
+            var outputPath = CategorizeItemPatch.GetPathForItem(_nextRender._grabbableObject.itemProperties);
+            cmd.RequestAsyncReadback(_nextRender._texture, request =>
+            {
+                var rawData = request.GetData<half>();
+                var saveTexture = new Texture2D(texture.width, texture.height, texture.graphicsFormat, TextureCreationFlags.DontUploadUponCreate);
+                saveTexture.SetPixelData(rawData, 0);
+
+                var directory = Path.GetDirectoryName(outputPath) ?? "";
+                var filename = Path.GetFileName(outputPath);
+
+                var pngData = ImageConversion.EncodeNativeArrayToPNG(rawData, texture.graphicsFormat, (uint)texture.width, (uint)texture.height);
+                var pngDirectory = Path.Combine(Paths.CachePath, $"{nameof(RuntimeIcons)}.PNG", directory);
+                var pngPath = Path.Combine(pngDirectory, filename + ".png");
+                Directory.CreateDirectory(pngDirectory);
+                File.WriteAllBytesAsync(pngPath, [.. pngData]);
+
+                var exrData = ImageConversion.EncodeNativeArrayToEXR(rawData, texture.graphicsFormat, (uint)texture.width, (uint)texture.height);
+                var exrDirectory = Path.Combine(Paths.CachePath, $"{nameof(RuntimeIcons)}.EXR", directory);
+                var exrPath = Path.Combine(exrDirectory, filename + ".exr");
+                Directory.CreateDirectory(exrDirectory);
+                File.WriteAllBytesAsync(exrPath, [.. exrData]);
+            });
+        }
+
+        context.ExecuteCommandBuffer(cmd);
+
+        _renderedItems.Add(_nextRender);
+        _nextRender = null;
     }
 
     private void CameraCleanup()
@@ -265,36 +329,11 @@ public class CameraQueueComponent : MonoBehaviour
             RuntimeIcons.Log.LogFatal($"Exception Resetting Stage: \n{ex}");
         }
     }
-    
-    public struct RenderingElement
+
+    private static bool ItemHasIcon(RenderingElement element)
     {
-
-        public RenderingElement(GrabbableObject grabbableObject, Sprite errorSprite)
-        {
-            GrabbableObject = grabbableObject;
-            ErrorSprite = errorSprite;
-            
-            ItemKey = CategorizeItemPatch.GetPathForItem(grabbableObject.itemProperties)
-                .Replace(Path.DirectorySeparatorChar, '/');
-
-            RuntimeIcons.OverrideMap.TryGetValue(ItemKey, out var overrideHolder);
-
-            OverrideHolder = overrideHolder;
-        }
-
-        public GrabbableObject GrabbableObject { get; }
-
-        public Sprite ErrorSprite { get; }
-
-        public OverrideHolder OverrideHolder { get; }
-        
-        public string ItemKey { get; }
-    }
-
-    internal static bool ItemHasIcon(RenderingElement element)
-    {
-        var key = element.ItemKey;
-        var item = element.GrabbableObject.itemProperties;
+        var key = element._itemKey;
+        var item = element._grabbableObject.itemProperties;
 
         var inList = PluginConfig.ItemList.Contains(key);
         
@@ -315,7 +354,7 @@ public class CameraQueueComponent : MonoBehaviour
         if (item.itemIcon.name == "ScrapItemIcon2")
             return false;
 
-        if (element.OverrideHolder?.OverrideSprite && item.itemIcon != element.OverrideHolder.OverrideSprite)
+        if (element._override?.OverrideSprite && item.itemIcon != element._override.OverrideSprite)
             return false;
         
         return true;

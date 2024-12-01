@@ -1,0 +1,7 @@
+ManifestFileVersion: 0
+CRC: 3413258729
+AssetBundleManifest:
+  AssetBundleInfos:
+    Info_0:
+      Name: runtimeicons.unity3d
+      Dependencies: {}
