@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using RuntimeIcons.Dependency;
 using RuntimeIcons.Patches;
-using RuntimeIcons.Utils;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -166,7 +165,7 @@ public class StageComponent : MonoBehaviour
 
         Memory = new TransformMemory(StagedTransform);
 
-        StagedTransform.position = CameraTransform.position + stageSettings._cameraOffset + stageSettings._position;
+        StagedTransform.position = CameraTransform.position + stageSettings.CameraOffset + stageSettings.Position;
         StagedTransform.rotation = stageSettings.Rotation;
         LightTransform.position = StagedTransform.position;
     }  

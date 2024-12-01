@@ -15,7 +15,6 @@ using RuntimeIcons.Dependency;
 using RuntimeIcons.Patches;
 using RuntimeIcons.Utils;
 using UnityEngine;
-using UnityEngine.Assertions;
 using UnityEngine.Rendering.HighDefinition;
 using LogType = VertexLibrary.LogType;
 
@@ -38,7 +37,7 @@ public class RuntimeIcons : BaseUnityPlugin
 
     internal static ManualLogSource Log;
 
-    internal static StageComponent CameraStage;
+    internal static StageComponent RenderingStage;
 
     internal static Dictionary<string, OverrideHolder> OverrideMap = new(StringComparer.InvariantCultureIgnoreCase);
 
@@ -116,14 +115,14 @@ public class RuntimeIcons : BaseUnityPlugin
 
     private void SetStage()
     {
-        CameraStage = StageComponent.CreateStage(HideFlags.HideAndDontSave, LayerMask.GetMask("Default",
+        RenderingStage = StageComponent.CreateStage(HideFlags.HideAndDontSave, LayerMask.GetMask("Default",
                 "Player", "Water",
                 "Props", "Room", "InteractableObject", "Foliage", "PhysicsObject", "Enemies", "PlayerRagdoll",
                 "MapHazards", "MiscLevelGeometry", "Terrain"), $"{nameof(RuntimeIcons)}.Stage");
-        DontDestroyOnLoad(CameraStage.gameObject);
-        CameraStage.gameObject.transform.position = new Vector3(0, 1000, 1000);
-        CameraStage.Resolution = new Vector2Int(256, 256);
-        CameraStage.MarginPixels = new Vector2(32, 32);
+        DontDestroyOnLoad(RenderingStage.gameObject);
+        RenderingStage.gameObject.transform.position = new Vector3(0, 1000, 1000);
+        RenderingStage.Resolution = new Vector2Int(256, 256);
+        RenderingStage.MarginPixels = new Vector2(32, 32);
 
         //add ceiling light!
         var lightGo1 = new GameObject("SpotLight 1")
@@ -132,7 +131,7 @@ public class RuntimeIcons : BaseUnityPlugin
             layer = 1,
             transform =
             {
-                parent = CameraStage.LightTransform,
+                parent = RenderingStage.LightTransform,
                 localPosition = new Vector3(0, 3, 0),
                 rotation = Quaternion.LookRotation(Vector3.down)
             }
@@ -171,7 +170,7 @@ public class RuntimeIcons : BaseUnityPlugin
             layer = 1,
             transform =
             {
-                parent = CameraStage.LightTransform,
+                parent = RenderingStage.LightTransform,
                 localPosition = new Vector3(-2.7f, 0, -2.7f),
                 rotation = Quaternion.Euler(0, 45, 0)
             }
@@ -211,7 +210,7 @@ public class RuntimeIcons : BaseUnityPlugin
             layer = 1,
             transform =
             {
-                parent = CameraStage.LightTransform,
+                parent = RenderingStage.LightTransform,
                 localPosition = new Vector3(2.7f, 0, -2.7f),
                 rotation = Quaternion.Euler(0, -45, 0)
             }

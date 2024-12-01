@@ -10,7 +10,7 @@ public static class GrabbableObjectPatch
     [HarmonyPatch(typeof(GrabbableObject), nameof(GrabbableObject.Start))]
     private static void AfterStart(GrabbableObject __instance)
     {
-        RuntimeIcons.CameraStage.CameraQueue.EnqueueObject(__instance, RuntimeIcons.WarningSprite, 2);
+        RuntimeIcons.RenderingStage.CameraQueue.EnqueueObject(__instance, RuntimeIcons.WarningSprite, 2);
     }
 
     [HarmonyPostfix]
@@ -26,6 +26,6 @@ public static class GrabbableObjectPatch
         RuntimeIcons.Log.LogInfo($"Attempting to refresh BrokenIcon for {__instance.itemProperties.itemName}!");
         
         __instance.itemProperties.itemIcon = null;
-        RuntimeIcons.CameraStage.CameraQueue.EnqueueObject(__instance, RuntimeIcons.ErrorSprite);
+        RuntimeIcons.RenderingStage.CameraQueue.EnqueueObject(__instance, RuntimeIcons.ErrorSprite);
     }
 }

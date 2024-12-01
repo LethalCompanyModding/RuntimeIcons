@@ -66,7 +66,7 @@ internal static class PluginConfig
                     var oldIcon = heldItem.itemProperties.itemIcon;
                     heldItem.itemProperties.itemIcon = null;
 
-                    RuntimeIcons.CameraStage.CameraQueue.EnqueueObject(heldItem, oldIcon);
+                    RuntimeIcons.RenderingStage.CameraQueue.EnqueueObject(heldItem, oldIcon);
                     
                 });
         }
