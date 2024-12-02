@@ -21,6 +21,8 @@ public class CameraQueueComponent : MonoBehaviour
     private Camera StageCamera { get; set; }
     internal StageComponent Stage { get; set; }
 
+    private bool _isStaged = false;
+
     private void Start()
     {
         StageCamera = GetComponent<Camera>();
@@ -229,9 +231,11 @@ public class CameraQueueComponent : MonoBehaviour
 
             RuntimeIcons.Log.LogDebug($"Setting stage for {key}");
 
+            // Set the item on the stage and isolate lighting.
             Stage.SetStageFromSettings(_nextRender.Value.Settings);
 
             _isolatorHolder = new StageComponent.IsolateStageLights(settings.TargetObject.gameObject, Stage.LightGo);
+            _isStaged = true;
         }
         catch (Exception ex)
         {
@@ -246,20 +250,22 @@ public class CameraQueueComponent : MonoBehaviour
         if (camera != StageCamera)
             return;
 
-        if (_nextRender is null)
+        if (!_nextRender.HasValue)
             return;
-        
+        var instance = _nextRender.Value;
+        _nextRender = null;
+
         var cmd = CommandBufferPool.Get();
         var texture = camera.targetTexture;
         var transparentCountID = UnpremultiplyAndCountTransparent.Execute(cmd, texture);
 
-        cmd.CopyTexture(texture, _nextRender.Value.Texture);
+        cmd.CopyTexture(texture, instance.Texture);
         var renderFence = cmd.CreateGraphicsFence(GraphicsFenceType.CPUSynchronisation, SynchronisationStageFlags.AllGPUOperations);
 
         if (PluginConfig.DumpToCache)
         {
-            var targetItem = _nextRender.Value.Request.GrabbableObject.itemProperties;
-            cmd.RequestAsyncReadback(_nextRender.Value.Texture, request =>
+            var targetItem = instance.Request.GrabbableObject.itemProperties;
+            cmd.RequestAsyncReadback(instance.Texture, request =>
             {
                 var rawData = request.GetData<byte>();
 
@@ -285,30 +291,25 @@ public class CameraQueueComponent : MonoBehaviour
         
         CommandBufferPool.Release(cmd);
 
-        _renderedItems.Add(new RenderingResult(_nextRender.Value.Request, _nextRender.Value.Texture, renderFence, transparentCountID));
-        _nextRender = null;
+        _renderedItems.Add(new RenderingResult(instance.Request, instance.Texture, renderFence, transparentCountID));
     }
 
     private void CameraCleanup()
     {
-        try
+        if (_isStaged)
         {
+            _isStaged = false;
+
             //cleanup
-            if (Stage.StagedTransform)
-            {
-                Stage.ResetStage();
-            }
+            Stage.ResetStage();
 
             //re-enable lights if we had an isolator active
             if (_isolatorHolder != null)
             {
-                _isolatorHolder.Dispose();
+                var holder = _isolatorHolder;
                 _isolatorHolder = null;
+                holder.Dispose();
             }
-        }
-        catch (Exception ex)
-        {
-            RuntimeIcons.Log.LogFatal($"Exception Resetting Stage: \n{ex}");
         }
     }
     
