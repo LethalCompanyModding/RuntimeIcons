@@ -115,18 +115,17 @@ public class CameraQueueComponent : MonoBehaviour
 
         var currentFrame = Time.frameCount;
         RenderingRequest? found = null;
-        RenderingRequest target;
 
         while (_renderingQueue.TryPeek(out _, out var targetFrame))
         {
             if (targetFrame > currentFrame)
                 break;
 
-            target = _renderingQueue.Dequeue();
+            var candidateRequest = _renderingQueue.Dequeue();
 
-            if (target.GrabbableObject && !target.GrabbableObject.isPocketed && !target.HasIcon)
+            if (candidateRequest.GrabbableObject && !candidateRequest.GrabbableObject.isPocketed && !candidateRequest.HasIcon)
             {
-                found = target;
+                found = candidateRequest;
                 break;
             }
         }
@@ -134,7 +133,7 @@ public class CameraQueueComponent : MonoBehaviour
         if (found is null)
             return;
 
-        target = found.Value;
+        var target = found.Value;
 
         try
         {
