@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -47,14 +47,14 @@ internal static class UnpremultiplyAndCountTransparent
 
     public static int Execute(CommandBuffer cmd, RenderTexture texture)
     {
-        _unpremultiplyAndCountTransparentShader.SetBuffer(_initializeShaderHandle, "TransparentCount", _transparentCountBuffer);
-        _unpremultiplyAndCountTransparentShader.SetBuffer(_unpremultiplyAndCountTransparentHandle, "TransparentCount", _transparentCountBuffer);
-
         if (_unpremultiplyAndCountTransparentShader == null)
         {
             RuntimeIcons.Log.LogError("UnpremultiplyAndCountTransparent has been called before the shader was loaded.");
             return -1;
         }
+
+        _unpremultiplyAndCountTransparentShader.SetBuffer(_initializeShaderHandle, "TransparentCount", _transparentCountBuffer);
+        _unpremultiplyAndCountTransparentShader.SetBuffer(_unpremultiplyAndCountTransparentHandle, "TransparentCount", _transparentCountBuffer);
 
         var threadGroupsX = (int)(texture.width / _unpremultiplyAndCountTransparentThreadWidth);
         var threadGroupsY = (int)(texture.height / _unpremultiplyAndCountTransparentThreadHeight);
