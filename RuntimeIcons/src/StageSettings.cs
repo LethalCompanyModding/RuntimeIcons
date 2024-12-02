@@ -16,7 +16,7 @@ public class StageSettings
     internal Quaternion _rotation = Quaternion.identity;
 
     public Vector3 Position => _position;
-    
+
     public Vector3 CameraOffset => _cameraOffset;
     public Quaternion Rotation => _rotation;
 
@@ -24,5 +24,4 @@ public class StageSettings
     {
         TargetRequest = renderingRequest;
     }
-    
 }

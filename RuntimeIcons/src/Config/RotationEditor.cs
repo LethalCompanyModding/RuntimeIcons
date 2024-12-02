@@ -10,7 +10,6 @@ namespace RuntimeIcons.Config;
 
 internal static class RotationEditor
 {
-        
     internal static void Init()
     {
         if (LethalConfigProxy.Enabled)
@@ -18,9 +17,9 @@ internal static class RotationEditor
             var configFile = new ConfigFile(Path.GetTempFileName(), false, MetadataHelper.GetMetadata(RuntimeIcons.INSTANCE));
 
             var eulerAngles = configFile.Bind("Rotation Calculator", "Euler Angles", "0,0,0", "The Euler angles representing this rotation");
-                
+
             var angle = configFile.Bind("Rotation Calculator", "Angle", 0.0f, new ConfigDescription("rotation angle", new AcceptableValueRange<float>(-360, 360)));
-                
+
             LethalConfigProxy.AddConfig(eulerAngles);
             LethalConfigProxy.AddConfig(angle);
             LethalConfigProxy.AddButton("Rotation Calculator", "Apply X Rotation", "translate current EulerAngles around world X Axis by Rotation amount", "X Rot",
@@ -29,7 +28,7 @@ internal static class RotationEditor
                 () => ApplyRotation(angle.Value, Vector3.up));
             LethalConfigProxy.AddButton("Rotation Calculator", "Apply Z Rotation", "translate current EulerAngles around world X Axis by Rotation amount", "Z Rot",
                 () => ApplyRotation(angle.Value, Vector3.forward));
-                
+
             return;
 
             void ApplyRotation(float angle, Vector3 axis)
@@ -51,34 +50,32 @@ internal static class RotationEditor
                 }
 
                 var quat = Quaternion.Euler(euler);
-                    
+
                 var rot = Quaternion.AngleAxis(angle, axis);
 
                 var res = rot * quat;
 
                 eulerAngles.Value = $"{WrapAroundAngle(res.eulerAngles.x)},{WrapAroundAngle(res.eulerAngles.y)},{WrapAroundAngle(res.eulerAngles.z)}";
-            } 
-                
+            }
+
         }
     }
 
     private static float WrapAroundAngle(float angle)
     {
-        // reduce the angle  
-        angle %= 360; 
+        // reduce the angle
+        angle %= 360;
 
-        // force it to be the positive remainder, so that 0 <= angle < 360  
-        angle = (angle + 360) % 360;  
+        // force it to be the positive remainder, so that 0 <= angle < 360
+        angle = (angle + 360) % 360;
 
-        // force into the minimum absolute value residue class, so that -180 < angle <= 180  
-        if (angle > 180)  
+        // force into the minimum absolute value residue class, so that -180 < angle <= 180
+        if (angle > 180)
             angle -= 360;
-            
+
         //round value to not have Exponential Notation
         angle = (float)Math.Round(angle, 2);
-            
+
         return angle;
     }
-        
-        
 }

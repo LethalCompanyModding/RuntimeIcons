@@ -4,26 +4,24 @@ using BepInEx.Bootstrap;
 using LobbyCompatibility.Enums;
 using LobbyCompatibility.Features;
 
-namespace RuntimeIcons.Dependency
+namespace RuntimeIcons.Dependency;
+
+public static class LobbyCompatibilityChecker
 {
-    public static class LobbyCompatibilityChecker
+    private static bool? _enabled;
+
+    public static bool Enabled
     {
-        private static bool? _enabled;
-
-        public static bool Enabled
+        get
         {
-            get
-            {
-                _enabled ??= Chainloader.PluginInfos.ContainsKey("BMX.LobbyCompatibility");
-                return _enabled.Value;
-            }
+            _enabled ??= Chainloader.PluginInfos.ContainsKey("BMX.LobbyCompatibility");
+            return _enabled.Value;
         }
+    }
 
-        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
-        public static void Init()
-        {
-            PluginHelper.RegisterPlugin(RuntimeIcons.GUID, Version.Parse(RuntimeIcons.VERSION), CompatibilityLevel.ClientOnly, VersionStrictness.None);
-        }
-        
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+    public static void Init()
+    {
+        PluginHelper.RegisterPlugin(RuntimeIcons.GUID, Version.Parse(RuntimeIcons.VERSION), CompatibilityLevel.ClientOnly, VersionStrictness.None);
     }
 }

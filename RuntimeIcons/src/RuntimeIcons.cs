@@ -289,7 +289,7 @@ public class RuntimeIcons : BaseUnityPlugin
     {
         var configDirectory = Path.Combine(Paths.ConfigPath, nameof(RuntimeIcons));
 
-        if (Directory.Exists(configDirectory)) 
+        if (Directory.Exists(configDirectory))
             ProcessDirectory(configDirectory, "RuntimeIcons.Config");
 
         foreach (var directory in Directory.EnumerateDirectories(Paths.PluginPath)
@@ -395,9 +395,9 @@ public class RuntimeIcons : BaseUnityPlugin
                     Log.LogError($"[{source}] Exception reading overrides.json\n{ex}");
                 }
             }
-            
+
             Log.LogDebug($"[{source}] Applying overrides");
-            
+
             foreach (var pair in localMap)
             {
                 if (!pair.Key.Contains('/'))

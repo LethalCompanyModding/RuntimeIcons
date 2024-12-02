@@ -10,7 +10,6 @@ namespace RuntimeIcons.Config;
 
 internal static class PluginConfig
 {
-
     internal static LogLevel VerboseMeshLogs => _verboseMeshLogs.Value;
     internal static bool DumpToCache => _dumpToCache.Value;
     internal static float TransparencyRatio => _failPercentage.Value;
@@ -20,7 +19,7 @@ internal static class PluginConfig
     private static ConfigEntry<ListBehaviour> _itemListBehaviourConfig;
     private static ConfigEntry<string> _itemListConfig;
     private static ConfigEntry<float> _failPercentage;
-    
+
     private static ConfigEntry<LogLevel> _verboseMeshLogs;
     private static ConfigEntry<bool> _dumpToCache;
 
@@ -31,33 +30,33 @@ internal static class PluginConfig
 
         _verboseMeshLogs = config.Bind("Debug", "Verbose Mesh Logs", LogLevel.None,"Print Extra logs!");
         _dumpToCache = config.Bind("Debug", "Dump sprites to cache", false,"Save the generated sprites into the cache folder");
-        
+
         _itemListBehaviourConfig = config.Bind("Config", "List Behaviour", ListBehaviour.BlackList, "What mode to use to filter what items will get new icons");
-                
+
         _itemListConfig = config.Bind("Config", "Item List", "", "List of items to filter\nExample: Vanilla/Big bolt, Unknown/Body");
-        
+
         _failPercentage = config.Bind("Config", "Transparency Threshold", 0.98f, new ConfigDescription("Maximum percentage of transparent pixels to consider a valid image", new AcceptableValueRange<float>(0f, 1f)));
-        
+
         ParseBlacklist();
         _itemListConfig.SettingChanged += (_, _) => ParseBlacklist();
-                
+
 
         if (LethalConfigProxy.Enabled)
         {
             LethalConfigProxy.AddConfig(_verboseMeshLogs);
             LethalConfigProxy.AddConfig(_dumpToCache);
-            
+
             LethalConfigProxy.AddConfig(_itemListConfig);
             LethalConfigProxy.AddConfig(_itemListBehaviourConfig);
             LethalConfigProxy.AddConfig(_failPercentage);
-                    
+
             LethalConfigProxy.AddButton("Debug", "Refresh Held Item", "Regenerate Sprite for held Item", "Refresh",
                 () =>
                 {
                     var startOfRound = StartOfRound.Instance;
                     if (!startOfRound)
                         return;
-                            
+
                     if (!startOfRound.localPlayerController.currentlyHeldObjectServer)
                         return;
 
@@ -67,14 +66,14 @@ internal static class PluginConfig
                     heldItem.itemProperties.itemIcon = null;
 
                     RuntimeIcons.RenderingStage.CameraQueue.EnqueueObject(heldItem, oldIcon);
-                    
+
                 });
         }
-                
+
         CleanAndSave();
-        
+
         RotationEditor.Init();
-        
+
         return;
 
         void ParseBlacklist()
@@ -104,6 +103,4 @@ internal static class PluginConfig
         orphanedEntries.Clear(); // Clear orphaned entries (Unbinded/Abandoned entries)
         config.Save(); // Save the config file
     }
-   
-
 }

@@ -27,25 +27,25 @@ public static class TextureUtils
 
         return Regex.Replace(dirty, invalidRegStr, "_");
     }
-    
+
     public static FileInfo SaveFile (byte[] bytes, string filename, string directory, string extension)
     {
         directory = Directory.CreateDirectory(directory).FullName;
         filename = filename != "" ? SanitizeFilename(filename) + extension : DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss-ffff") + extension;
         string filepath = Path.Combine(directory, filename);
-        
+
         RuntimeIcons.Log.LogDebug($"Saving {filename} to {directory}");
 
         File.WriteAllBytes(filepath, bytes);
 
         return new FileInfo(filepath);
     }
-    
+
     public static FileInfo SavePNG (this Texture2D tex, string filename = "", string directory = "")
     {
         return SaveFile(tex.EncodeToPNG(), filename.IsNullOrWhiteSpace() ? tex.name : filename, directory.IsNullOrWhiteSpace() ? "" : directory, ".png");
     }
-    
+
     public static FileInfo SaveEXR (this Texture2D tex, string filename = "", string directory = "")
     {
         return SaveFile(tex.EncodeToEXR(), filename.IsNullOrWhiteSpace() ? tex.name : filename, directory.IsNullOrWhiteSpace() ? "" : directory, ".exr");

@@ -7,12 +7,11 @@ namespace RuntimeIcons;
 
 public struct RenderingRequest
 {
-
     public RenderingRequest(GrabbableObject grabbableObject, Sprite errorSprite)
     {
         GrabbableObject = grabbableObject;
         ErrorSprite = errorSprite;
-            
+
         ItemKey = CategorizeItemPatch.GetPathForItem(grabbableObject.itemProperties)
             .Replace(Path.DirectorySeparatorChar, '/');
 
@@ -26,7 +25,7 @@ public struct RenderingRequest
     public Sprite ErrorSprite { get; }
 
     public OverrideHolder OverrideHolder { get; }
-        
+
     public string ItemKey { get; }
 
     public bool HasIcon
@@ -36,7 +35,7 @@ public struct RenderingRequest
             var item = GrabbableObject.itemProperties;
 
             var inList = PluginConfig.ItemList.Contains(ItemKey);
-        
+
             if (PluginConfig.ItemListBehaviour switch
                 {
                     PluginConfig.ListBehaviour.BlackList => inList,
@@ -44,7 +43,7 @@ public struct RenderingRequest
                     _ => false
                 })
                 return true;
-        
+
             if (!item.itemIcon)
                 return false;
             if (item.itemIcon == RuntimeIcons.LoadingSprite)

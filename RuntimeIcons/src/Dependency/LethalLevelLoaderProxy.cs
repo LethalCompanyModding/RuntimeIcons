@@ -23,7 +23,6 @@ public static class LethalLevelLoaderProxy
     [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
     public static void GetModdedItems([NotNull] in Dictionary<Item, Tuple<string,string>> items)
     {
-        
         RuntimeIcons.Log.LogWarning("LethalLevelLoader found, reading PatchedContent.ExtendedItems");
         foreach (var extendedItem in PatchedContent.ExtendedItems)
         {
