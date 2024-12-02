@@ -81,13 +81,9 @@ public class CameraQueueComponent : MonoBehaviour
         {
             if (ratio < PluginConfig.TransparencyRatio)
             {
-                // Use SpriteMeshType.FullRect, as Unity apparently gets very confused when creating a tight mesh
-                // around our generated texture at runtime, cutting it off on the top or the bottom.
-                var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
-                    new Vector2(texture.width / 2f, texture.height / 2f), 100f, 0u, SpriteMeshType.FullRect);
+                var sprite = SpriteUtils.CreateSprite(texture);
                 sprite.name = sprite.texture.name =
                     $"{nameof(RuntimeIcons)}.{grabbableObject.itemProperties.itemName}";
-                grabbableObject.itemProperties.itemIcon = sprite;
                 RuntimeIcons.Log.LogDebug($"{key} now has a new icon: {sprite.texture == texture}");
             }
             else
