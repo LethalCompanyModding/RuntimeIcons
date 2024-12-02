@@ -53,9 +53,6 @@ internal static class UnpremultiplyAndCountTransparent
             return -1;
         }
 
-        _unpremultiplyAndCountTransparentShader.SetBuffer(_initializeShaderHandle, "TransparentCount", _transparentCountBuffer);
-        _unpremultiplyAndCountTransparentShader.SetBuffer(_unpremultiplyAndCountTransparentHandle, "TransparentCount", _transparentCountBuffer);
-
         var threadGroupsX = (int)(texture.width / _unpremultiplyAndCountTransparentThreadWidth);
         var threadGroupsY = (int)(texture.height / _unpremultiplyAndCountTransparentThreadHeight);
 
