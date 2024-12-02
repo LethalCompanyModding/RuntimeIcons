@@ -62,6 +62,11 @@ public class RuntimeIcons : BaseUnityPlugin
 
             PluginConfig.Init();
 
+            Log.LogInfo("Loading Compute shader");
+            
+            if (!LoadComputeShader())
+                return;
+
             Log.LogInfo("Preparing Stage");
 
             SetStage();
@@ -79,9 +84,6 @@ public class RuntimeIcons : BaseUnityPlugin
             CategorizeItemPatch.Init();
             Harmony.PatchAll();
 
-            string assemblyPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            var assetBundle = AssetBundle.LoadFromFile(Path.Combine(assemblyPath, "runtimeicons.unity3d"));
-            UnpremultiplyAndCountTransparent.LoadShaders(assetBundle);
 
             Log.LogInfo(NAME + " v" + VERSION + " Loaded!");
         }
@@ -89,6 +91,13 @@ public class RuntimeIcons : BaseUnityPlugin
         {
             Log.LogError("Exception while initializing: \n" + ex);
         }
+    }
+
+    private static bool LoadComputeShader()
+    {
+        var assemblyPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        var assetBundle = AssetBundle.LoadFromFile(Path.Combine(assemblyPath!, "runtimeicons.unity3d"));
+        return UnpremultiplyAndCountTransparent.LoadShaders(assetBundle);
     }
 
     internal static void VerboseMeshLog(LogType logLevel, Func<string> message)

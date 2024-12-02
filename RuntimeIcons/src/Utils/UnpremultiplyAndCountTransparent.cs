@@ -20,14 +20,14 @@ internal static class UnpremultiplyAndCountTransparent
 
     private static int _texturePropertyID;
 
-    internal static void LoadShaders(AssetBundle bundle)
+    internal static bool LoadShaders(AssetBundle bundle)
     {
         _unpremultiplyAndCountTransparentShader = bundle.LoadAsset<ComputeShader>("Assets/Shaders/UnpremultiplyAndCountTransparent.compute");
 
         if (!_unpremultiplyAndCountTransparentShader)
         {
-            RuntimeIcons.Log.LogError("Failed to load the compute shader.");
-            return;
+            RuntimeIcons.Log.LogFatal("Failed to load the compute shader.");
+            return false;
         }
 
         _initializeShaderHandle = _unpremultiplyAndCountTransparentShader.FindKernel("Initialize");
@@ -41,6 +41,8 @@ internal static class UnpremultiplyAndCountTransparent
         _unpremultiplyAndCountTransparentShader.SetBuffer(_unpremultiplyAndCountTransparentHandle, "TransparentCount", _transparentCountBuffer);
 
         _texturePropertyID = Shader.PropertyToID("Texture");
+        
+        return true;
     }
 
     public static int Execute(CommandBuffer cmd, RenderTexture texture)

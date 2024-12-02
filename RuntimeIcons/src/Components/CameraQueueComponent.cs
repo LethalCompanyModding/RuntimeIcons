@@ -84,6 +84,9 @@ public class CameraQueueComponent : MonoBehaviour
                 var sprite = SpriteUtils.CreateSprite(texture);
                 sprite.name = sprite.texture.name =
                     $"{nameof(RuntimeIcons)}.{grabbableObject.itemProperties.itemName}";
+                
+                grabbableObject.itemProperties.itemIcon = sprite;
+                
                 RuntimeIcons.Log.LogDebug($"{key} now has a new icon: {sprite.texture == texture}");
             }
             else
@@ -103,7 +106,7 @@ public class CameraQueueComponent : MonoBehaviour
         return true;
     }
 
-    private RenderingInstance _nextRender;
+    private RenderingInstance? _nextRender;
 
     private void PrepareNextRender()
     {
@@ -137,7 +140,7 @@ public class CameraQueueComponent : MonoBehaviour
 
             RuntimeIcons.Log.LogDebug($"Computing stage for {target.ItemKey}");
 
-            var renderSettings = new StageSettings(target);
+            var renderSettings = new StageComponent.StageSettings(target);
 
             var (targetPosition, targetRotation) = Stage.CenterObjectOnPivot(renderSettings);
 
@@ -197,8 +200,8 @@ public class CameraQueueComponent : MonoBehaviour
         PrepareNextRender();
 
         var prepareTime = Time.realtimeSinceStartupAsDouble - prepareStartTime;
-        if (_nextRender != null)
-            RuntimeIcons.Log.LogInfo($"{Time.frameCount}: Preparing to render {_nextRender.Request.ItemKey} took {prepareTime * 1_000_000} microseconds");
+        if (_nextRender is not null)
+            RuntimeIcons.Log.LogInfo($"{Time.frameCount}: Preparing to render {_nextRender.Value.Request.ItemKey} took {prepareTime * 1_000_000} microseconds");
     }
 
     private StageComponent.IsolateStageLights _isolatorHolder;
@@ -215,8 +218,8 @@ public class CameraQueueComponent : MonoBehaviour
         if (_nextRender is null)
             return;
 
-        var key = _nextRender.Request.ItemKey;
-        var settings = _nextRender.Settings;
+        var key = _nextRender.Value.Request.ItemKey;
+        var settings = _nextRender.Value.Settings;
 
         try
         {
@@ -226,7 +229,7 @@ public class CameraQueueComponent : MonoBehaviour
 
             RuntimeIcons.Log.LogDebug($"Setting stage for {key}");
 
-            Stage.SetStageFromSettings(_nextRender.Settings);
+            Stage.SetStageFromSettings(_nextRender.Value.Settings);
 
             _isolatorHolder = new StageComponent.IsolateStageLights(settings.TargetObject.gameObject, Stage.LightGo);
         }
@@ -239,21 +242,24 @@ public class CameraQueueComponent : MonoBehaviour
     private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
     {
         CameraCleanup();
-
+        
         if (camera != StageCamera)
             return;
 
-        var cmd = new CommandBuffer();
+        if (_nextRender is null)
+            return;
+        
+        var cmd = CommandBufferPool.Get();
         var texture = camera.targetTexture;
         var transparentCountID = UnpremultiplyAndCountTransparent.Execute(cmd, texture);
 
-        cmd.CopyTexture(texture, _nextRender.Texture);
+        cmd.CopyTexture(texture, _nextRender.Value.Texture);
         var renderFence = cmd.CreateGraphicsFence(GraphicsFenceType.CPUSynchronisation, SynchronisationStageFlags.AllGPUOperations);
 
         if (PluginConfig.DumpToCache)
         {
-            var targetItem = _nextRender.Request.GrabbableObject.itemProperties;
-            cmd.RequestAsyncReadback(_nextRender.Texture, request =>
+            var targetItem = _nextRender.Value.Request.GrabbableObject.itemProperties;
+            cmd.RequestAsyncReadback(_nextRender.Value.Texture, request =>
             {
                 var rawData = request.GetData<byte>();
 
@@ -276,8 +282,10 @@ public class CameraQueueComponent : MonoBehaviour
         }
 
         context.ExecuteCommandBuffer(cmd);
+        
+        CommandBufferPool.Release(cmd);
 
-        _renderedItems.Add(new RenderingResult(_nextRender.Request, _nextRender.Texture, renderFence, transparentCountID));
+        _renderedItems.Add(new RenderingResult(_nextRender.Value.Request, _nextRender.Value.Texture, renderFence, transparentCountID));
         _nextRender = null;
     }
 
@@ -303,19 +311,75 @@ public class CameraQueueComponent : MonoBehaviour
             RuntimeIcons.Log.LogFatal($"Exception Resetting Stage: \n{ex}");
         }
     }
-
-    private class RenderingInstance(RenderingRequest request, StageSettings settings, Texture2D texture)
+    
+    internal readonly struct RenderingRequest
     {
-        public readonly RenderingRequest Request = request;
-        public readonly StageSettings Settings = settings;
-        public readonly Texture2D Texture = texture;
+        internal RenderingRequest(GrabbableObject grabbableObject, Sprite errorSprite)
+        {
+            GrabbableObject = grabbableObject;
+            ErrorSprite = errorSprite;
+
+            ItemKey = CategorizeItemPatch.GetPathForItem(grabbableObject.itemProperties)
+                .Replace(Path.DirectorySeparatorChar, '/');
+
+            RuntimeIcons.OverrideMap.TryGetValue(ItemKey, out var overrideHolder);
+
+            OverrideHolder = overrideHolder;
+        }
+
+        internal readonly GrabbableObject GrabbableObject;
+
+        internal readonly Sprite ErrorSprite;
+
+        internal readonly OverrideHolder OverrideHolder;
+
+        internal readonly string ItemKey;
+
+        internal bool HasIcon
+        {
+            get
+            {
+                var item = GrabbableObject.itemProperties;
+
+                var inList = PluginConfig.ItemList.Contains(ItemKey);
+
+                if (PluginConfig.ItemListBehaviour switch
+                    {
+                        PluginConfig.ListBehaviour.BlackList => inList,
+                        PluginConfig.ListBehaviour.WhiteList => !inList,
+                        _ => false
+                    })
+                    return true;
+
+                if (!item.itemIcon)
+                    return false;
+                if (item.itemIcon == RuntimeIcons.LoadingSprite)
+                    return false;
+                if (item.itemIcon.name == "ScrapItemIcon")
+                    return false;
+                if (item.itemIcon.name == "ScrapItemIcon2")
+                    return false;
+
+                if (OverrideHolder?.OverrideSprite && item.itemIcon != OverrideHolder.OverrideSprite)
+                    return false;
+
+                return true;
+            }
+        }
+    }
+
+    private readonly struct RenderingInstance(RenderingRequest request, StageComponent.StageSettings settings, Texture2D texture)
+    {
+        internal readonly RenderingRequest Request = request;
+        internal readonly StageComponent.StageSettings Settings = settings;
+        internal readonly Texture2D Texture = texture;
     }
 
     private class RenderingResult(RenderingRequest request, Texture2D texture, GraphicsFence fence, int computeID)
     {
         private bool _fencePassed;
 
-        public bool FencePassed
+        internal bool FencePassed
         {
             get
             {
@@ -331,12 +395,12 @@ public class CameraQueueComponent : MonoBehaviour
             }
         }
 
-        public readonly RenderingRequest Request = request;
+        internal readonly RenderingRequest Request = request;
 
-        public readonly Texture2D Texture = texture;
+        internal readonly Texture2D Texture = texture;
 
-        public readonly GraphicsFence Fence = fence;
+        internal readonly GraphicsFence Fence = fence;
 
-        public readonly int ComputeID = computeID;
+        internal readonly int ComputeID = computeID;
     }
 }

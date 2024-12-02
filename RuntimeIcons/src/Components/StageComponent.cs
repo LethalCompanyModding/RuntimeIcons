@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using RuntimeIcons.Config;
 using RuntimeIcons.Dependency;
 using RuntimeIcons.Patches;
 using UnityEngine;
@@ -23,12 +24,12 @@ public class StageComponent : MonoBehaviour
 
     public IVertexCache VertexCache { get; set; } = VertexesExtensions.GlobalPartialCache;
 
-    public GameObject LightGo { get; private set; }
+    internal GameObject LightGo { get; private set; }
 
 
     private GameObject CameraGo { get; set; }
 
-    public Transform LightTransform => LightGo.transform;
+    internal Transform LightTransform => LightGo.transform;
     private Transform CameraTransform => CameraGo.transform;
 
     private Camera _camera;
@@ -36,7 +37,7 @@ public class StageComponent : MonoBehaviour
 
     private ColorBufferFormat? _originalColorBufferFormat;
 
-    public Vector2Int Resolution
+    internal Vector2Int Resolution
     {
         get => _resolution;
         set
@@ -47,16 +48,16 @@ public class StageComponent : MonoBehaviour
         }
     }
 
-    public Vector2 MarginPixels = new Vector2(0, 0);
+    internal Vector2 MarginPixels = new Vector2(0, 0);
 
-    public int CullingMask => _camera.cullingMask;
+    internal int CullingMask => _camera.cullingMask;
 
-    public Transform StagedTransform { get; private set; }
-    public GrabbableObject StagedItem { get; private set; }
+    internal Transform StagedTransform { get; private set; }
+    internal GrabbableObject StagedItem { get; private set; }
 
     private TransformMemory Memory { get; set; }
 
-    public static StageComponent CreateStage(HideFlags hideFlags, int cameraLayerMask = 1, string stageName = "Stage",
+    internal static StageComponent CreateStage(HideFlags hideFlags, int cameraLayerMask = 1, string stageName = "Stage",
         bool orthographic = false)
     {
         //create the root Object for the Stage
@@ -149,7 +150,7 @@ public class StageComponent : MonoBehaviour
         RenderPipelineManager.endCameraRendering += EndCameraRendering;
     }
 
-    public void SetStageFromSettings(StageSettings stageSettings)
+    internal void SetStageFromSettings(StageSettings stageSettings)
     {
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
@@ -170,7 +171,7 @@ public class StageComponent : MonoBehaviour
         LightTransform.position = StagedTransform.position;
     }
 
-    public (Vector3 position, Quaternion rotation) CenterObjectOnPivot(StageSettings stageSettings)
+    internal (Vector3 position, Quaternion rotation) CenterObjectOnPivot(StageSettings stageSettings)
     {
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
@@ -211,7 +212,7 @@ public class StageComponent : MonoBehaviour
         return (stageSettings.Position, stageSettings.Rotation);
     }
 
-    public (Vector3 offset, float fov) PrepareCameraForShot(StageSettings stageSettings)
+    internal (Vector3 offset, float fov) PrepareCameraForShot(StageSettings stageSettings)
     {
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
@@ -284,7 +285,7 @@ public class StageComponent : MonoBehaviour
         }
     }
 
-    public void ResetStage()
+    internal void ResetStage()
     {
         if (StagedTransform)
         {
@@ -391,7 +392,7 @@ public class StageComponent : MonoBehaviour
         }
     }
 
-    public record struct TransformMemory
+    internal record struct TransformMemory
     {
         public readonly Transform Parent;
         public readonly Vector3 LocalPosition;
@@ -427,7 +428,7 @@ public class StageComponent : MonoBehaviour
         angleMax = Mathf.Atan(tangentMax) * Mathf.Rad2Deg;
     }
 
-    public (Vector3 position, Quaternion rotation) FindOptimalRotation(StageSettings stageSettings)
+    internal (Vector3 position, Quaternion rotation) FindOptimalRotation(StageSettings stageSettings)
     {
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
@@ -548,5 +549,28 @@ public class StageComponent : MonoBehaviour
         stageSettings._rotation = targetRotation * stageSettings._rotation;
 
         return (Vector3.zero, targetRotation);
+    }
+    
+    internal class StageSettings
+    {
+        internal CameraQueueComponent.RenderingRequest TargetRequest { get; }
+
+        internal GrabbableObject TargetObject => TargetRequest.GrabbableObject;
+        internal Transform TargetTransform => TargetObject.transform;
+        internal OverrideHolder OverrideHolder => TargetRequest.OverrideHolder;
+
+        internal Vector3 _position = Vector3.zero;
+        internal Vector3 _cameraOffset = Vector3.zero;
+        internal Quaternion _rotation = Quaternion.identity;
+
+        internal Vector3 Position => _position;
+
+        internal Vector3 CameraOffset => _cameraOffset;
+        internal Quaternion Rotation => _rotation;
+
+        internal StageSettings(CameraQueueComponent.RenderingRequest renderingRequest)
+        {
+            TargetRequest = renderingRequest;
+        }
     }
 }
