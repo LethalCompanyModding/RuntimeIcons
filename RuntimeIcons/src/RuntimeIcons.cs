@@ -253,7 +253,7 @@ public class RuntimeIcons : BaseUnityPlugin
         else
         {
             var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LoadingSprite.png");
-            LoadingSprite = SpriteUtils.GetSprite(stream);
+            LoadingSprite = SpriteUtils.CreateSprite(stream);
         }
         LoadingSprite2 = Instantiate(LoadingSprite);
 
@@ -267,7 +267,7 @@ public class RuntimeIcons : BaseUnityPlugin
         else
         {
             var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("WarningSprite.png");
-            WarningSprite = SpriteUtils.GetSprite(stream);
+            WarningSprite = SpriteUtils.CreateSprite(stream);
         }
 
         WarningSprite.name = WarningSprite.texture.name = $"{nameof(RuntimeIcons)}.Warning";
@@ -279,7 +279,7 @@ public class RuntimeIcons : BaseUnityPlugin
         else
         {
             var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("ErrorSprite.png");
-            ErrorSprite = SpriteUtils.GetSprite(stream);
+            ErrorSprite = SpriteUtils.CreateSprite(stream);
         }
 
         ErrorSprite.name = ErrorSprite.texture.name = $"{nameof(RuntimeIcons)}.Error";
@@ -319,7 +319,7 @@ public class RuntimeIcons : BaseUnityPlugin
 
                 var data = File.ReadAllBytes(icon);
 
-                var sprite = SpriteUtils.GetSprite(data);
+                var sprite = SpriteUtils.CreateSprite(data);
 
                 var texture = sprite.texture;
                 if (texture.width != texture.height)
