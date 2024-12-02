@@ -33,18 +33,18 @@ public class CameraQueueComponent : MonoBehaviour
     {
         if (!grabbableObject)
             throw new ArgumentNullException(nameof(grabbableObject));
-        
+
         if (!errorSprite)
             errorSprite = RuntimeIcons.ErrorSprite;
-        
+
         var queueElement = new RenderingRequest(grabbableObject, errorSprite);
         var key = queueElement.ItemKey;
 
         if (queueElement.HasIcon)
             return false;
-        
+
         RuntimeIcons.Log.LogWarning($"Computing {key} icon");
-        
+
         if (queueElement.OverrideHolder?.OverrideSprite)
         {
             grabbableObject.itemProperties.itemIcon = queueElement.OverrideHolder.OverrideSprite;
@@ -52,7 +52,7 @@ public class CameraQueueComponent : MonoBehaviour
             RuntimeIcons.Log.LogDebug($"{key} now has a new icon from {queueElement.OverrideHolder.Source}");
             return true;
         }
-        
+
         grabbableObject.itemProperties.itemIcon = RuntimeIcons.LoadingSprite;
         HudUtils.UpdateIconsInHUD(grabbableObject.itemProperties);
 
@@ -113,7 +113,7 @@ public class CameraQueueComponent : MonoBehaviour
     private void PrepareNextRender()
     {
         _nextRender = null;
-        
+
         var currentFrame = Time.frameCount;
         RenderingRequest? found = null;
         RenderingRequest target;
@@ -136,7 +136,7 @@ public class CameraQueueComponent : MonoBehaviour
             return;
 
         target = found.Value;
-        
+
         try
         {
             //pre-compute transform and FOV
@@ -208,22 +208,22 @@ public class CameraQueueComponent : MonoBehaviour
     }
 
     private StageComponent.IsolateStageLights _isolatorHolder;
-    
+
     private void OnBeginCameraRendering(ScriptableRenderContext context, Camera camera)
     {
         CameraCleanup();
 
         //if it's not our stage camera do nothing
-        if (camera != StageCamera) 
+        if (camera != StageCamera)
             return;
 
         //if we have something to render
-        if (_nextRender is null) 
+        if (_nextRender is null)
             return;
 
         var key = _nextRender.Request.ItemKey;
         var settings = _nextRender.Settings;
-        
+
         try
         {
             //mark the item as `Rendered` ( LoadingSprite is considered invalid icon while LoadingSprite2 is considered a valid icon )
@@ -241,14 +241,14 @@ public class CameraQueueComponent : MonoBehaviour
             RuntimeIcons.Log.LogError($"Error Rendering {key}\n{ex}");
         }
     }
-    
+
     private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
     {
         CameraCleanup();
 
         if (camera != StageCamera)
             return;
-        
+
         var cmd = new CommandBuffer();
         var texture = camera.targetTexture;
         var transparentCountID = UnpremultiplyAndCountTransparent.Execute(cmd, texture);
@@ -262,9 +262,9 @@ public class CameraQueueComponent : MonoBehaviour
             cmd.RequestAsyncReadback(_nextRender.Texture, request =>
             {
                 var outputPath = CategorizeItemPatch.GetPathForItem(targetItem);
-                
+
                 var rawData = request.GetData<half>();
-                
+
                 var directory = Path.GetDirectoryName(outputPath) ?? "";
                 var filename = Path.GetFileName(outputPath);
 
@@ -321,7 +321,7 @@ public class CameraQueueComponent : MonoBehaviour
     private class RenderingResult(RenderingRequest request, Texture2D texture, GraphicsFence fence, int computeID)
     {
         private bool _fencePassed;
-        
+
         public bool FencePassed
         {
             get
@@ -331,7 +331,7 @@ public class CameraQueueComponent : MonoBehaviour
 
                 if (!Fence.passed)
                     return false;
-                
+
                 //cache the passed state so subsequent calls do not query the fence
                 _fencePassed = true;
                 return true;
@@ -346,6 +346,4 @@ public class CameraQueueComponent : MonoBehaviour
 
         public readonly int ComputeID = computeID;
     }
-    
-    
 }

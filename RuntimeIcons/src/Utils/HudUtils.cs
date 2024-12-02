@@ -19,6 +19,4 @@ public static class HudUtils
             itemSlotIcons[i].sprite = item.itemIcon;
         }
     }
-    
-
 }

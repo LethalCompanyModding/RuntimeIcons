@@ -148,7 +148,7 @@ public class StageComponent : MonoBehaviour
         HDRenderPipelinePatch.beginCameraRendering += BeginCameraRendering;
         RenderPipelineManager.endCameraRendering += EndCameraRendering;
     }
-    
+
     public void SetStageFromSettings(StageSettings stageSettings)
     {
         if (stageSettings == null)
@@ -159,7 +159,7 @@ public class StageComponent : MonoBehaviour
 
         if (StagedTransform && StagedTransform != targetTransform)
             throw new InvalidOperationException("An Object is already on stage!");
-        
+
         StagedTransform = targetTransform;
         StagedItem = grabbableObject;
 
@@ -168,8 +168,8 @@ public class StageComponent : MonoBehaviour
         StagedTransform.position = CameraTransform.position + stageSettings.CameraOffset + stageSettings.Position;
         StagedTransform.rotation = stageSettings.Rotation;
         LightTransform.position = StagedTransform.position;
-    }  
-    
+    }
+
     public (Vector3 position, Quaternion rotation) CenterObjectOnPivot(StageSettings stageSettings)
     {
         if (stageSettings == null)
@@ -178,7 +178,7 @@ public class StageComponent : MonoBehaviour
         var overrideHolder = stageSettings.OverrideHolder;
         var grabbableObject = stageSettings.TargetObject;
         var targetTransform = stageSettings.TargetTransform;
-        
+
         Quaternion rotation;
         if (overrideHolder is { ItemRotation: not null })
         {
@@ -215,9 +215,9 @@ public class StageComponent : MonoBehaviour
     {
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
-        
+
         var targetTransform = stageSettings.TargetTransform;
-        
+
         var matrix = Matrix4x4.TRS(stageSettings.Position, stageSettings.Rotation, targetTransform.localScale);
 
         var executionOptions = new ExecutionOptions()
@@ -257,7 +257,7 @@ public class StageComponent : MonoBehaviour
             var updateMatrix = Matrix4x4.TRS(_camera.transform.position + stageSettings._cameraOffset, Quaternion.identity, Vector3.one);
             for (var i = 0; i < vertices.Length; i++)
                 vertices[i] = updateMatrix.MultiplyPoint3x4(vertices[i]);
-            
+
             const int iterations = 2;
 
             float angleMinX, angleMaxX;
@@ -431,12 +431,12 @@ public class StageComponent : MonoBehaviour
     {
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
-        
+
         var overrideHolder = stageSettings.OverrideHolder;
         var targetObject = stageSettings.TargetObject;
         var targetItem = targetObject.itemProperties;
         var targetTransform = stageSettings.TargetTransform;
-        
+
         Quaternion targetRotation = Quaternion.identity;
 
         if (overrideHolder is { StageRotation: not null })
@@ -445,9 +445,9 @@ public class StageComponent : MonoBehaviour
         }
         else
         {
-            
+
             var matrix = Matrix4x4.TRS(stageSettings.Position, stageSettings.Rotation, targetTransform.localScale);
-            
+
             var executionOptions = new ExecutionOptions()
             {
                 VertexCache = VertexCache,

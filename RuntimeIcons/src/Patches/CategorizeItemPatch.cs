@@ -19,19 +19,19 @@ public class CategorizeItemPatch
         RuntimeIcons.Hooks.Add(new Hook(AccessTools.Method(typeof(StartOfRound), nameof(StartOfRound.Awake)),
             PrepareItemCache));
     }
-    
+
     private static void PrepareItemCache(Action<StartOfRound> orig, StartOfRound __instance)
     {
         ItemModMap.Clear();
 
         VanillaItems ??= __instance.allItemsList.itemsList.ToArray();
-        
+
         foreach (var itemType in VanillaItems)
             ItemModMap.TryAdd(itemType, new Tuple<string, string>("Vanilla", ""));
 
         orig(__instance);
     }
-    
+
     [HarmonyFinalizer]
     [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.Start))]
     private static void PopulateModdedCache(StartOfRound __instance)
@@ -65,7 +65,7 @@ public class CategorizeItemPatch
         var cleanName = string.Join("_",
                 item.itemName.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries))
             .TrimEnd('.');
-        
+
         var cleanMod = string.Join("_",
                 modTag.Item2.Split(Path.GetInvalidPathChars(), StringSplitOptions.RemoveEmptyEntries))
             .TrimEnd('.');
@@ -74,12 +74,11 @@ public class CategorizeItemPatch
 
         return path;
     }
-    
+
     private static readonly Regex ConfigFilterRegex = new Regex(@"[\n\t\\\'\[\]]");
 
     public static string SanitizeForConfig(string input)
     {
         return ConfigFilterRegex.Replace(input, "").Trim();
     }
-    
 }
