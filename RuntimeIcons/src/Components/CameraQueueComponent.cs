@@ -6,7 +6,6 @@ using RuntimeIcons.Config;
 using RuntimeIcons.Dotnet.Backports;
 using RuntimeIcons.Patches;
 using RuntimeIcons.Utils;
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -261,10 +260,9 @@ public class CameraQueueComponent : MonoBehaviour
             var targetItem = _nextRender.Request.GrabbableObject.itemProperties;
             cmd.RequestAsyncReadback(_nextRender.Texture, request =>
             {
+                var rawData = request.GetData<byte>();
+
                 var outputPath = CategorizeItemPatch.GetPathForItem(targetItem);
-
-                var rawData = request.GetData<half>();
-
                 var directory = Path.GetDirectoryName(outputPath) ?? "";
                 var filename = Path.GetFileName(outputPath);
 
