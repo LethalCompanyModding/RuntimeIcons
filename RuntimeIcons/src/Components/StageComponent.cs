@@ -110,6 +110,7 @@ public class StageComponent : MonoBehaviour
         var hdrpCam = cameraGo.AddComponent<HDAdditionalCameraData>();
         hdrpCam.clearColorMode = HDAdditionalCameraData.ClearColorMode.Color;
         hdrpCam.backgroundColorHDR = Color.clear;
+        hdrpCam.hasPersistentHistory = true;
         hdrpCam.customRenderingSettings = true;
 
         void SetOverride(FrameSettingsField setting, bool enabled)
