@@ -84,8 +84,14 @@ public class RuntimeIcons : BaseUnityPlugin
             CategorizeItemPatch.Init();
             Harmony.PatchAll();
 
-
             Log.LogInfo(NAME + " v" + VERSION + " Loaded!");
+
+#if ENABLE_PROFILER_MARKERS
+            Application.SetStackTraceLogType(UnityEngine.LogType.Log, StackTraceLogType.None);
+            Application.SetStackTraceLogType(UnityEngine.LogType.Warning, StackTraceLogType.None);
+            Application.SetStackTraceLogType(UnityEngine.LogType.Error, StackTraceLogType.None);
+            Application.SetStackTraceLogType(UnityEngine.LogType.Assert, StackTraceLogType.None);
+#endif
         }
         catch (Exception ex)
         {

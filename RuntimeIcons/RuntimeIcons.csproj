@@ -4,6 +4,7 @@
         <RootNamespace>$(ModNameSpace)</RootNamespace>
         <AssemblyName>$(ModName)</AssemblyName>
         <Product>$(ModName)</Product>
+        <Configurations>Profiling;Release</Configurations>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Evaisa-LethalLib" Version="0.16.1" Private="False"/>
