@@ -7,6 +7,7 @@ using RuntimeIcons.Config;
 using RuntimeIcons.Dotnet.Backports;
 using RuntimeIcons.Patches;
 using RuntimeIcons.Utils;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -111,8 +112,16 @@ public class CameraQueueComponent : MonoBehaviour
 
     private RenderingInstance? _nextRender;
 
+#if ENABLE_PROFILER_MARKERS
+    private static readonly ProfilerMarker PrepareNextRenderMarker = new(nameof(PrepareNextRender));
+#endif
+
     private void PrepareNextRender()
     {
+#if ENABLE_PROFILER_MARKERS
+        var markerAuto = PrepareNextRenderMarker.Auto();
+#endif
+
         _nextRender = null;
 
         var currentFrame = Time.frameCount;
@@ -186,25 +195,14 @@ public class CameraQueueComponent : MonoBehaviour
     {
         if (_renderedItems.Count > 0)
         {
-            //var pullStartTime = Time.realtimeSinceStartupAsDouble;
-
             var itemToApply = _renderedItems[0];
             if (PullLastRender(itemToApply))
                 _renderedItems.RemoveAt(0);
-
-            //var pullTime = Time.realtimeSinceStartupAsDouble - pullStartTime;
-            //RuntimeIcons.Log.LogInfo($"{Time.frameCount}: Pulling count and creating sprite for {itemToApply.Request.ItemKey} took {pullTime * 1_000_000} microseconds");
         }
 
         StageCamera.enabled = false;
 
-        //var prepareStartTime = Time.realtimeSinceStartupAsDouble;
-
         PrepareNextRender();
-
-        //var prepareTime = Time.realtimeSinceStartupAsDouble - prepareStartTime;
-        //if (_nextRender is not null)
-            //RuntimeIcons.Log.LogInfo($"{Time.frameCount}: Preparing to render {_nextRender.Value.Request.ItemKey} took {prepareTime * 1_000_000} microseconds");
     }
 
     private StageComponent.IsolateStageLights _isolatorHolder;
@@ -244,8 +242,17 @@ public class CameraQueueComponent : MonoBehaviour
         }
     }
 
+#if ENABLE_PROFILER_MARKERS
+    private static readonly ProfilerMarker OnEndCameraMarker = new(nameof(OnEndCameraRendering));
+    private static readonly ProfilerMarker DumpRenderMarker = new("Dump Icon Render");
+#endif
+
     private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
     {
+#if ENABLE_PROFILER_MARKERS
+        using var markerAuto = OnEndCameraMarker.Auto();
+#endif
+
         CameraCleanup();
 
         //if it's not our stage camera do nothing
@@ -271,6 +278,10 @@ public class CameraQueueComponent : MonoBehaviour
             var targetItem = instance.Request.GrabbableObject.itemProperties;
             cmd.RequestAsyncReadback(instance.Texture, request =>
             {
+#if ENABLE_PROFILER_MARKERS
+                using var dumpMarkerAuto = DumpRenderMarker.Auto();
+#endif
+
                 var rawData = request.GetData<byte>();
 
                 var outputPath = CategorizeItemPatch.GetPathForItem(targetItem);
@@ -292,7 +303,6 @@ public class CameraQueueComponent : MonoBehaviour
         }
 
         context.ExecuteCommandBuffer(cmd);
-        
         CommandBufferPool.Release(cmd);
 
         _renderedItems.Add(new RenderingResult(instance.Request, instance.Texture, renderFence, transparentCountID));

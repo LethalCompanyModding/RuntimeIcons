@@ -32,6 +32,11 @@
         <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))=./</PathMap>
     </PropertyGroup>
 
+    <!-- Enable Profiler Markers -->
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|AnyCPU'">
+      <DefineConstants>$(DefineConstants);ENABLE_PROFILER_MARKERS</DefineConstants>
+    </PropertyGroup>
+
     <!-- Suppress some Warnings -->
     <PropertyGroup>
         <NoWarn>1701;1702;CS0436</NoWarn>

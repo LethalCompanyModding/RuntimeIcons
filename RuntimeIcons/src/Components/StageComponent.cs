@@ -5,6 +5,7 @@ using BepInEx.Logging;
 using RuntimeIcons.Config;
 using RuntimeIcons.Dependency;
 using RuntimeIcons.Patches;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -173,8 +174,16 @@ public class StageComponent : MonoBehaviour
         LightTransform.position = StagedTransform.position;
     }
 
+#if ENABLE_PROFILER_MARKERS
+    private static readonly ProfilerMarker CenterObjectOnPivotMarker = new(nameof(CenterObjectOnPivot));
+#endif
+
     internal (Vector3 position, Quaternion rotation) CenterObjectOnPivot(StageSettings stageSettings)
     {
+#if ENABLE_PROFILER_MARKERS
+        using var markerAuto = CenterObjectOnPivotMarker.Auto();
+#endif
+
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
 
@@ -191,8 +200,16 @@ public class StageComponent : MonoBehaviour
         return (stageSettings.Position, stageSettings.Rotation);
     }
 
+#if ENABLE_PROFILER_MARKERS
+    private static readonly ProfilerMarker FindOptimalRotationMarker = new(nameof(FindOptimalRotation));
+#endif
+
     internal (Vector3 position, Quaternion rotation) FindOptimalRotation(StageSettings stageSettings)
     {
+#if ENABLE_PROFILER_MARKERS
+        using var markerAuto = FindOptimalRotationMarker.Auto();
+#endif
+
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
 
@@ -320,8 +337,16 @@ public class StageComponent : MonoBehaviour
         return (-bounds2.center, targetRotation);
     }
 
+#if ENABLE_PROFILER_MARKERS
+    private static readonly ProfilerMarker PrepareCameraForShotMarker = new(nameof(PrepareCameraForShot));
+#endif
+
     internal (Vector3 offset, float fov) PrepareCameraForShot(StageSettings stageSettings)
     {
+#if ENABLE_PROFILER_MARKERS
+        using var marker = PrepareCameraForShotMarker.Auto();
+#endif
+
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
 
