@@ -406,6 +406,26 @@ public class StageComponent : MonoBehaviour
         }
     }
 
+    private static void GetCameraAngles(Camera camera, Vector3 direction, IEnumerable<Vector3> vertices,
+        out float angleMin, out float angleMax)
+    {
+        var position = camera.transform.position;
+        var forwardPlane = new Plane(camera.transform.forward, position);
+        var directionPlane = new Plane(direction, position);
+        var tangentMin = float.PositiveInfinity;
+        var tangentMax = float.NegativeInfinity;
+
+        foreach (var vertex in vertices)
+        {
+            var tangent = directionPlane.GetDistanceToPoint(vertex) / forwardPlane.GetDistanceToPoint(vertex);
+            tangentMin = Math.Min(tangent, tangentMin);
+            tangentMax = Math.Max(tangent, tangentMax);
+        }
+
+        angleMin = Mathf.Atan(tangentMin) * Mathf.Rad2Deg;
+        angleMax = Mathf.Atan(tangentMax) * Mathf.Rad2Deg;
+    }
+
     internal void ResetStage()
     {
         if (StagedTransform)
@@ -529,26 +549,6 @@ public class StageComponent : MonoBehaviour
         }
     }
 
-    private static void GetCameraAngles(Camera camera, Vector3 direction, IEnumerable<Vector3> vertices,
-        out float angleMin, out float angleMax)
-    {
-        var position = camera.transform.position;
-        var forwardPlane = new Plane(camera.transform.forward, position);
-        var directionPlane = new Plane(direction, position);
-        var tangentMin = float.PositiveInfinity;
-        var tangentMax = float.NegativeInfinity;
-
-        foreach (var vertex in vertices)
-        {
-            var tangent = directionPlane.GetDistanceToPoint(vertex) / forwardPlane.GetDistanceToPoint(vertex);
-            tangentMin = Math.Min(tangent, tangentMin);
-            tangentMax = Math.Max(tangent, tangentMax);
-        }
-
-        angleMin = Mathf.Atan(tangentMin) * Mathf.Rad2Deg;
-        angleMax = Mathf.Atan(tangentMax) * Mathf.Rad2Deg;
-    }
-    
     internal class StageSettings
     {
         internal CameraQueueComponent.RenderingRequest TargetRequest;
