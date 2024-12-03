@@ -376,38 +376,32 @@ public class StageComponent : MonoBehaviour
         }
         else
         {
+            var updateMatrix = Matrix4x4.TRS(_camera.transform.position + stageSettings._cameraOffset, Quaternion.identity, Vector3.one);
             for (var i = 0; i < vertices.Length; i++)
-                vertices[i] = stageSettings._cameraOffset + vertices[i];
+                vertices[i] = updateMatrix.MultiplyPoint3x4(vertices[i]);
 
-            float minAngleX = float.MaxValue, maxAngleX = float.MinValue;
-            float minAngleY = float.MaxValue, maxAngleY = float.MinValue;
+            const int iterations = 1;
 
-            foreach (var vertex in vertices)
+            float angleMinX, angleMaxX;
+            float angleMinY, angleMaxY;
+
+            for (var i = 0; i < iterations; i++)
             {
-                var viewDirection = vertex.normalized;
+                GetCameraAngles(_camera, CameraTransform.right, vertices, out angleMinY, out angleMaxY);
+                _camera.transform.Rotate(Vector3.up, (angleMinY + angleMaxY) / 2, Space.World);
 
-                // Calculate signed angles relative to camera's axes
-                var angleX = Vector3.SignedAngle(Vector3.forward, viewDirection, Vector3.up);
-                var angleY = Vector3.SignedAngle(Vector3.forward, viewDirection, Vector3.right);
-
-                // Track minimum and maximum angles
-                minAngleX = Mathf.Min(minAngleX, angleX);
-                maxAngleX = Mathf.Max(maxAngleX, angleX);
-                minAngleY = Mathf.Min(minAngleY, angleY);
-                maxAngleY = Mathf.Max(maxAngleY, angleY);
+                GetCameraAngles(_camera, -CameraTransform.up, vertices, out angleMinX, out angleMaxX);
+                _camera.transform.Rotate(Vector3.right, (angleMinX + angleMaxX) / 2, Space.Self);
             }
-            
-            // Compute the angular spans
-            var horizontalSpan = maxAngleX - minAngleX;
-            var verticalSpan = maxAngleY - minAngleY;
 
-            // Apply scaling factors
-            var fovAngleX = horizontalSpan * fovScale.x;
-            var fovAngleY = Camera.HorizontalToVerticalFieldOfView(verticalSpan, _camera.aspect) * fovScale.y;
+            GetCameraAngles(_camera, CameraTransform.right, vertices, out angleMinY, out angleMaxY);
+            GetCameraAngles(_camera, -CameraTransform.up, vertices, out angleMinX, out angleMaxX);
 
-            // Set the FOV to cover the larger of the two spans
-            _camera.fieldOfView = Mathf.Max(fovAngleX, fovAngleY);
-
+            var fovAngleX = Math.Max(-angleMinX, angleMaxX) * 2 * fovScale.y;
+            var fovAngleY =
+                Camera.HorizontalToVerticalFieldOfView(Math.Max(-angleMinY, angleMaxY) * 2, _camera.aspect) *
+                fovScale.x;
+            _camera.fieldOfView = Math.Max(fovAngleX, fovAngleY);
             return (stageSettings._cameraOffset, _camera.fieldOfView);
         }
     }
