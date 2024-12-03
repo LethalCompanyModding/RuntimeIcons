@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BepInEx.Logging;
 using RuntimeIcons.Config;
 using RuntimeIcons.Dependency;
 using RuntimeIcons.Patches;
@@ -176,40 +177,146 @@ public class StageComponent : MonoBehaviour
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
 
-        var overrideHolder = stageSettings.OverrideHolder;
-        var grabbableObject = stageSettings.TargetObject;
-        var targetTransform = stageSettings.TargetTransform;
+        var bounds = stageSettings.StagedVertexes.GetBounds();
+        if (bounds is null)
+            throw new InvalidOperationException("This object has no Renders!");
 
-        Quaternion rotation;
-        if (overrideHolder is { ItemRotation: not null })
+        stageSettings._position = -bounds.Value.center;
+
+        var vertices = stageSettings.StagedVertexes;
+        for (var i = 0; i < vertices.Length; i++)
+            vertices[i] = stageSettings._position + vertices[i];
+
+        return (stageSettings.Position, stageSettings.Rotation);
+    }
+
+    internal (Vector3 position, Quaternion rotation) FindOptimalRotation(StageSettings stageSettings)
+    {
+        if (stageSettings == null)
+            throw new ArgumentNullException(nameof(stageSettings));
+
+        var overrideHolder = stageSettings.OverrideHolder;
+        var targetObject = stageSettings.TargetObject;
+        var targetItem = targetObject.itemProperties;
+
+        Quaternion targetRotation = Quaternion.identity;
+
+        if (overrideHolder is { StageRotation: not null })
         {
-            rotation = Quaternion.Euler(overrideHolder.ItemRotation.Value + new Vector3(0, 90f, 0));
+            targetRotation = Quaternion.Euler(overrideHolder.StageRotation.Value);
         }
         else
         {
-            rotation = Quaternion.Euler(grabbableObject.itemProperties.restingRotation.x,
-                grabbableObject.itemProperties.floorYOffset + 90f,
-                grabbableObject.itemProperties.restingRotation.z);
+
+            var bObj = stageSettings.StagedVertexes.GetBounds();
+
+            if (bObj is null)
+                throw new InvalidOperationException("This object has no Renders!");
+
+            var bounds = bObj.Value;
+
+            if (bounds.size == Vector3.zero)
+                throw new InvalidOperationException("This object has no Bounds!");
+
+            if (bounds.size.y < bounds.size.x / 2f && bounds.size.y < bounds.size.z / 2f)
+            {
+                if (bounds.size.z < bounds.size.x * 0.5f)
+                {
+                    RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{targetItem.itemName} rotated -45 y | 1");
+
+                    targetRotation = Quaternion.AngleAxis(-45, Vector3.up) * targetRotation;
+                }
+                else if (bounds.size.z < bounds.size.x * 0.85f)
+                {
+                    RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{targetItem.itemName} rotated -90 y | 2");
+
+                    targetRotation = Quaternion.AngleAxis(-90, Vector3.up) * targetRotation;
+                }
+                else if (bounds.size.x < bounds.size.z * 0.5f)
+                {
+                    RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{targetItem.itemName} rotated -90 y | 3");
+
+                    targetRotation = Quaternion.AngleAxis(-45, Vector3.up) * targetRotation;
+                }
+
+                RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{targetItem.itemName} rotated -80 x");
+
+                targetRotation = Quaternion.AngleAxis(-80, Vector3.right) * targetRotation;
+
+                RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{targetItem.itemName} rotated 15 y");
+
+                targetRotation = Quaternion.AngleAxis(-15, Vector3.up) * targetRotation;
+            }
+            else
+            {
+                if (bounds.size.x < bounds.size.z * 0.85f)
+                {
+                    RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{targetItem.itemName} rotated -25 x | 1");
+
+                    targetRotation = Quaternion.AngleAxis(-25, Vector3.right) * targetRotation;
+
+                    RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{targetItem.itemName} rotated -45 y | 1");
+
+                    targetRotation = Quaternion.AngleAxis(-45, Vector3.up) * targetRotation;
+                }
+                else if ((Mathf.Abs(bounds.size.y - bounds.size.x) / bounds.size.x < 0.01f) &&
+                         bounds.size.x < bounds.size.z * 0.85f)
+                {
+                    RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{targetItem.itemName} rotated -25 x | 2");
+
+                    targetRotation = Quaternion.AngleAxis(-25, Vector3.right) * targetRotation;
+
+                    RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{targetItem.itemName} rotated 45 y | 2");
+
+                    targetRotation = Quaternion.AngleAxis(45, Vector3.up) * targetRotation;
+                }
+                else if ((Mathf.Abs(bounds.size.y - bounds.size.z) / bounds.size.z < 0.01f) &&
+                         bounds.size.z < bounds.size.x * 0.85f)
+                {
+                    RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{targetItem.itemName} rotated 25 z | 3");
+
+                    targetRotation = Quaternion.AngleAxis(25, Vector3.forward) * targetRotation;
+
+                    RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{targetItem.itemName} rotated -45 y | 3");
+
+                    targetRotation = Quaternion.AngleAxis(-45, Vector3.up) * targetRotation;
+                }
+                else if (bounds.size.y < bounds.size.x / 2f || bounds.size.x < bounds.size.y / 2f)
+                {
+                    RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{targetItem.itemName} rotated 45 z | 4");
+
+                    targetRotation = Quaternion.AngleAxis(45, Vector3.forward) * targetRotation;
+
+                    RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{targetItem.itemName} rotated -25 x | 4");
+
+                    targetRotation = Quaternion.AngleAxis(25, Vector3.up) * targetRotation;
+                }
+                else
+                {
+                    RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{targetItem.itemName} rotated -25 x | 5");
+
+                    targetRotation = Quaternion.AngleAxis(-25, Vector3.right) * targetRotation;
+                }
+            }
         }
 
+        //rotate the memory and vertices
+        stageSettings._position = targetRotation * stageSettings._position;
+        stageSettings._rotation = targetRotation * stageSettings._rotation;
 
-        var matrix = Matrix4x4.TRS(Vector3.zero, rotation, targetTransform.localScale);
+        var vertices = stageSettings.StagedVertexes;
+        for (var i = 0; i < vertices.Length; i++)
+            vertices[i] = targetRotation * vertices[i];
 
-        var executionOptions = new ExecutionOptions()
-        {
-            VertexCache = VertexCache,
-            CullingMask = CullingMask,
-            LogHandler = RuntimeIcons.VerboseMeshLog,
-            OverrideMatrix = matrix
-        };
+        //re-center memory and vertices
+        var bounds2 = stageSettings.StagedVertexes.GetBounds()!.Value;
 
-        if (!targetTransform.gameObject.TryGetBounds(out var bounds, executionOptions))
-            throw new InvalidOperationException("This object has no Renders!");
+        stageSettings._position -= bounds2.center;
+        
+        for (var i = 0; i < vertices.Length; i++)
+            vertices[i] = -bounds2.center + vertices[i];
 
-        stageSettings._position = -bounds.center;
-        stageSettings._rotation = rotation;
-
-        return (stageSettings.Position, stageSettings.Rotation);
+        return (-bounds2.center, targetRotation);
     }
 
     internal (Vector3 offset, float fov) PrepareCameraForShot(StageSettings stageSettings)
@@ -217,19 +324,7 @@ public class StageComponent : MonoBehaviour
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
 
-        var targetTransform = stageSettings.TargetTransform;
-
-        var matrix = Matrix4x4.TRS(stageSettings.Position, stageSettings.Rotation, targetTransform.localScale);
-
-        var executionOptions = new ExecutionOptions()
-        {
-            VertexCache = VertexCache,
-            CullingMask = CullingMask,
-            LogHandler = RuntimeIcons.VerboseMeshLog,
-            OverrideMatrix = matrix,
-        };
-
-        var vertices = targetTransform.GetVertexes(executionOptions);
+        var vertices = stageSettings.StagedVertexes.ToArray();
         if (vertices.Length == 0)
             throw new InvalidOperationException("This object has no Renders!");
 
@@ -255,34 +350,52 @@ public class StageComponent : MonoBehaviour
         }
         else
         {
-            var updateMatrix = Matrix4x4.TRS(_camera.transform.position + stageSettings._cameraOffset, Quaternion.identity, Vector3.one);
             for (var i = 0; i < vertices.Length; i++)
-                vertices[i] = updateMatrix.MultiplyPoint3x4(vertices[i]);
+                vertices[i] = stageSettings._cameraOffset + vertices[i];
 
-            const int iterations = 2;
+            float minAngleX = float.MaxValue, maxAngleX = float.MinValue;
+            float minAngleY = float.MaxValue, maxAngleY = float.MinValue;
 
-            float angleMinX, angleMaxX;
-            float angleMinY, angleMaxY;
-
-            for (var i = 0; i < iterations; i++)
+            foreach (var vertex in vertices)
             {
-                GetCameraAngles(_camera, CameraTransform.right, vertices, out angleMinY, out angleMaxY);
-                _camera.transform.Rotate(Vector3.up, (angleMinY + angleMaxY) / 2, Space.World);
+                var viewDirection = vertex.normalized;
 
-                GetCameraAngles(_camera, -CameraTransform.up, vertices, out angleMinX, out angleMaxX);
-                _camera.transform.Rotate(Vector3.right, (angleMinX + angleMaxX) / 2, Space.Self);
+                // Calculate signed angles relative to camera's axes
+                var angleX = Vector3.SignedAngle(Vector3.forward, viewDirection, Vector3.up);
+                var angleY = Vector3.SignedAngle(Vector3.forward, viewDirection, Vector3.right);
+
+                // Track minimum and maximum angles
+                minAngleX = Mathf.Min(minAngleX, angleX);
+                maxAngleX = Mathf.Max(maxAngleX, angleX);
+                minAngleY = Mathf.Min(minAngleY, angleY);
+                maxAngleY = Mathf.Max(maxAngleY, angleY);
             }
+            
+            // Compute the angular spans
+            var horizontalSpan = maxAngleX - minAngleX;
+            var verticalSpan = maxAngleY - minAngleY;
 
-            GetCameraAngles(_camera, CameraTransform.right, vertices, out angleMinY, out angleMaxY);
-            GetCameraAngles(_camera, -CameraTransform.up, vertices, out angleMinX, out angleMaxX);
+            // Apply scaling factors
+            var fovAngleX = horizontalSpan * fovScale.x;
+            var fovAngleY = Camera.HorizontalToVerticalFieldOfView(verticalSpan, _camera.aspect) * fovScale.y;
 
-            var fovAngleX = Math.Max(-angleMinX, angleMaxX) * 2 * fovScale.y;
-            var fovAngleY =
-                Camera.HorizontalToVerticalFieldOfView(Math.Max(-angleMinY, angleMaxY) * 2, _camera.aspect) *
-                fovScale.x;
-            _camera.fieldOfView = Math.Max(fovAngleX, fovAngleY);
+            // Set the FOV to cover the larger of the two spans
+            _camera.fieldOfView = Mathf.Max(fovAngleX, fovAngleY);
+
             return (stageSettings._cameraOffset, _camera.fieldOfView);
         }
+    }
+    
+    private static Vector3 ComputeVerticesCenter(IEnumerable<Vector3> vertices)
+    {
+        var sum = Vector3.zero;
+        var count = 0;
+        foreach (var vertex in vertices)
+        {
+            sum += vertex;
+            count++;
+        }
+        return sum / count;
     }
 
     internal void ResetStage()
@@ -427,133 +540,12 @@ public class StageComponent : MonoBehaviour
         angleMin = Mathf.Atan(tangentMin) * Mathf.Rad2Deg;
         angleMax = Mathf.Atan(tangentMax) * Mathf.Rad2Deg;
     }
-
-    internal (Vector3 position, Quaternion rotation) FindOptimalRotation(StageSettings stageSettings)
-    {
-        if (stageSettings == null)
-            throw new ArgumentNullException(nameof(stageSettings));
-
-        var overrideHolder = stageSettings.OverrideHolder;
-        var targetObject = stageSettings.TargetObject;
-        var targetItem = targetObject.itemProperties;
-        var targetTransform = stageSettings.TargetTransform;
-
-        Quaternion targetRotation = Quaternion.identity;
-
-        if (overrideHolder is { StageRotation: not null })
-        {
-            targetRotation = Quaternion.Euler(overrideHolder.StageRotation.Value);
-        }
-        else
-        {
-
-            var matrix = Matrix4x4.TRS(stageSettings.Position, stageSettings.Rotation, targetTransform.localScale);
-
-            var executionOptions = new ExecutionOptions()
-            {
-                VertexCache = VertexCache,
-                CullingMask = CullingMask,
-                LogHandler = RuntimeIcons.VerboseMeshLog,
-                OverrideMatrix = matrix
-            };
-
-            if (!targetTransform.TryGetBounds(out var bounds, executionOptions))
-                throw new InvalidOperationException("This object has no Renders!");
-
-            if (bounds.size == Vector3.zero)
-                throw new InvalidOperationException("This object has no Bounds!");
-
-            if (bounds.size.y < bounds.size.x / 2f && bounds.size.y < bounds.size.z / 2f)
-            {
-                if (bounds.size.z < bounds.size.x * 0.5f)
-                {
-                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -45 y | 1");
-
-                    targetRotation = Quaternion.AngleAxis(-45, Vector3.up) * targetRotation;
-                }
-                else if (bounds.size.z < bounds.size.x * 0.85f)
-                {
-                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -90 y | 2");
-
-                    targetRotation = Quaternion.AngleAxis(-90, Vector3.up) * targetRotation;
-                }
-                else if (bounds.size.x < bounds.size.z * 0.5f)
-                {
-                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -90 y | 3");
-
-                    targetRotation = Quaternion.AngleAxis(-45, Vector3.up) * targetRotation;
-                }
-
-                RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -80 x");
-
-                targetRotation = Quaternion.AngleAxis(-80, Vector3.right) * targetRotation;
-
-                RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated 15 y");
-
-                targetRotation = Quaternion.AngleAxis(-15, Vector3.up) * targetRotation;
-            }
-            else
-            {
-                if (bounds.size.x < bounds.size.z * 0.85f)
-                {
-                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -25 x | 1");
-
-                    targetRotation = Quaternion.AngleAxis(-25, Vector3.right) * targetRotation;
-
-                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -45 y | 1");
-
-                    targetRotation = Quaternion.AngleAxis(-45, Vector3.up) * targetRotation;
-                }
-                else if ((Mathf.Abs(bounds.size.y - bounds.size.x) / bounds.size.x < 0.01f) &&
-                         bounds.size.x < bounds.size.z * 0.85f)
-                {
-                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -25 x | 2");
-
-                    targetRotation = Quaternion.AngleAxis(-25, Vector3.right) * targetRotation;
-
-                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated 45 y | 2");
-
-                    targetRotation = Quaternion.AngleAxis(45, Vector3.up) * targetRotation;
-                }
-                else if ((Mathf.Abs(bounds.size.y - bounds.size.z) / bounds.size.z < 0.01f) &&
-                         bounds.size.z < bounds.size.x * 0.85f)
-                {
-                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated 25 z | 3");
-
-                    targetRotation = Quaternion.AngleAxis(25, Vector3.forward) * targetRotation;
-
-                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -45 y | 3");
-
-                    targetRotation = Quaternion.AngleAxis(-45, Vector3.up) * targetRotation;
-                }
-                else if (bounds.size.y < bounds.size.x / 2f || bounds.size.x < bounds.size.y / 2f)
-                {
-                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated 45 z | 4");
-
-                    targetRotation = Quaternion.AngleAxis(45, Vector3.forward) * targetRotation;
-
-                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -25 x | 4");
-
-                    targetRotation = Quaternion.AngleAxis(25, Vector3.up) * targetRotation;
-                }
-                else
-                {
-                    RuntimeIcons.Log.LogDebug($"{targetItem.itemName} rotated -25 x | 5");
-
-                    targetRotation = Quaternion.AngleAxis(-25, Vector3.right) * targetRotation;
-                }
-            }
-        }
-
-        stageSettings._position = targetRotation * stageSettings._position;
-        stageSettings._rotation = targetRotation * stageSettings._rotation;
-
-        return (Vector3.zero, targetRotation);
-    }
     
     internal class StageSettings
     {
-        internal CameraQueueComponent.RenderingRequest TargetRequest { get; }
+        internal CameraQueueComponent.RenderingRequest TargetRequest;
+
+        internal Vector3[] StagedVertexes;
 
         internal GrabbableObject TargetObject => TargetRequest.GrabbableObject;
         internal Transform TargetTransform => TargetObject.transform;
@@ -568,9 +560,33 @@ public class StageComponent : MonoBehaviour
         internal Vector3 CameraOffset => _cameraOffset;
         internal Quaternion Rotation => _rotation;
 
-        internal StageSettings(CameraQueueComponent.RenderingRequest renderingRequest)
+        internal StageSettings(StageComponent stage, CameraQueueComponent.RenderingRequest renderingRequest)
         {
             TargetRequest = renderingRequest;
+            
+            if (OverrideHolder is { ItemRotation: not null })
+            {
+                _rotation = Quaternion.Euler(OverrideHolder.ItemRotation.Value + new Vector3(0, 90f, 0));
+            }
+            else
+            {
+                _rotation = Quaternion.Euler(TargetObject.itemProperties.restingRotation.x,
+                    TargetObject.itemProperties.floorYOffset + 90f,
+                    TargetObject.itemProperties.restingRotation.z);
+            }
+
+
+            var matrix = Matrix4x4.TRS(Vector3.zero, _rotation, TargetTransform.localScale);
+
+            var executionOptions = new ExecutionOptions()
+            {
+                VertexCache = stage.VertexCache,
+                CullingMask = stage.CullingMask,
+                LogHandler = RuntimeIcons.VerboseMeshLog,
+                OverrideMatrix = matrix
+            };
+
+            StagedVertexes = TargetTransform.gameObject.GetVertexes(executionOptions);
         }
     }
 }

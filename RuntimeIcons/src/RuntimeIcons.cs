@@ -121,6 +121,12 @@ public class RuntimeIcons : BaseUnityPlugin
     {
         Log.Log(logLevel, message());
     }
+    
+    internal static void VerboseRenderingLog(LogLevel logLevel, string message)
+    {
+        if ((logLevel & PluginConfig.VerboseRenderingLogs) != 0)
+            Log.Log(logLevel, message);
+    }
 
     private void SetStage()
     {
