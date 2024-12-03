@@ -11,6 +11,7 @@ namespace RuntimeIcons.Config;
 internal static class PluginConfig
 {
     internal static LogLevel VerboseMeshLogs => _verboseMeshLogs.Value;
+    internal static LogLevel VerboseRenderingLogs => _verboseRenderingLogs.Value;
     internal static bool DumpToCache => _dumpToCache.Value;
     internal static float TransparencyRatio => _failPercentage.Value;
     internal static ISet<string> ItemList { get; private set; }
@@ -21,6 +22,7 @@ internal static class PluginConfig
     private static ConfigEntry<float> _failPercentage;
 
     private static ConfigEntry<LogLevel> _verboseMeshLogs;
+    private static ConfigEntry<LogLevel> _verboseRenderingLogs;
     private static ConfigEntry<bool> _dumpToCache;
 
     internal static void Init()
@@ -29,6 +31,7 @@ internal static class PluginConfig
         //Initialize Configs
 
         _verboseMeshLogs = config.Bind("Debug", "Verbose Mesh Logs", LogLevel.None,"Print Extra logs!");
+        _verboseRenderingLogs = config.Bind("Debug", "Verbose Rendering Logs", LogLevel.None,"Print Extra logs!");
         _dumpToCache = config.Bind("Debug", "Dump sprites to cache", false,"Save the generated sprites into the cache folder");
 
         _itemListBehaviourConfig = config.Bind("Config", "List Behaviour", ListBehaviour.BlackList, "What mode to use to filter what items will get new icons");
@@ -44,6 +47,7 @@ internal static class PluginConfig
         if (LethalConfigProxy.Enabled)
         {
             LethalConfigProxy.AddConfig(_verboseMeshLogs);
+            LethalConfigProxy.AddConfig(_verboseRenderingLogs);
             LethalConfigProxy.AddConfig(_dumpToCache);
 
             LethalConfigProxy.AddConfig(_itemListConfig);

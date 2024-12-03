@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using BepInEx;
+using BepInEx.Logging;
 using RuntimeIcons.Config;
 using RuntimeIcons.Dotnet.Backports;
 using RuntimeIcons.Patches;
@@ -50,7 +51,7 @@ public class CameraQueueComponent : MonoBehaviour
         {
             grabbableObject.itemProperties.itemIcon = queueElement.OverrideHolder.OverrideSprite;
             HudUtils.UpdateIconsInHUD(grabbableObject.itemProperties);
-            RuntimeIcons.Log.LogDebug($"{key} now has a new icon from {queueElement.OverrideHolder.Source}");
+            RuntimeIcons.Log.LogInfo($"{key} now has a new icon from {queueElement.OverrideHolder.Source}");
             return true;
         }
 
@@ -89,7 +90,7 @@ public class CameraQueueComponent : MonoBehaviour
                 
                 grabbableObject.itemProperties.itemIcon = sprite;
                 
-                RuntimeIcons.Log.LogDebug($"{key} now has a new icon: {sprite.texture == texture}");
+                RuntimeIcons.Log.LogInfo($"{key} now has a new icon: {sprite.texture == texture}");
             }
             else
             {
@@ -140,22 +141,22 @@ public class CameraQueueComponent : MonoBehaviour
         {
             //pre-compute transform and FOV
 
-            RuntimeIcons.Log.LogDebug($"Computing stage for {target.ItemKey}");
+            RuntimeIcons.VerboseRenderingLog(LogLevel.Info,$"Computing stage for {target.ItemKey}");
 
-            var renderSettings = new StageComponent.StageSettings(target);
+            var renderSettings = new StageComponent.StageSettings(Stage, target);
 
             var (targetPosition, targetRotation) = Stage.CenterObjectOnPivot(renderSettings);
 
-            RuntimeIcons.Log.LogDebug($"Item: offset {targetPosition} rotation {targetRotation}");
+            RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"Item: offset {targetPosition} rotation {targetRotation}");
 
             var (_, stageRotation) = Stage.FindOptimalRotation(renderSettings);
 
-            RuntimeIcons.Log.LogDebug($"Stage: rotation {stageRotation.eulerAngles}");
+            RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"Stage: rotation {stageRotation.eulerAngles}");
 
             var (cameraOffset, cameraFov) = Stage.PrepareCameraForShot(renderSettings);
 
-            RuntimeIcons.Log.LogDebug($"Camera Offset: {cameraOffset}");
-            RuntimeIcons.Log.LogDebug(
+            RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"Camera Offset: {cameraOffset}");
+            RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,
                 $"Camera {(StageCamera.orthographic ? "orthographicSize" : "field of view")}: {cameraFov}");
 
             // Extract the image into a new texture without mipmaps
@@ -185,25 +186,25 @@ public class CameraQueueComponent : MonoBehaviour
     {
         if (_renderedItems.Count > 0)
         {
-            var pullStartTime = Time.realtimeSinceStartupAsDouble;
+            //var pullStartTime = Time.realtimeSinceStartupAsDouble;
 
             var itemToApply = _renderedItems[0];
             if (PullLastRender(itemToApply))
                 _renderedItems.RemoveAt(0);
 
-            var pullTime = Time.realtimeSinceStartupAsDouble - pullStartTime;
-            RuntimeIcons.Log.LogInfo($"{Time.frameCount}: Pulling count and creating sprite for {itemToApply.Request.ItemKey} took {pullTime * 1_000_000} microseconds");
+            //var pullTime = Time.realtimeSinceStartupAsDouble - pullStartTime;
+            //RuntimeIcons.Log.LogInfo($"{Time.frameCount}: Pulling count and creating sprite for {itemToApply.Request.ItemKey} took {pullTime * 1_000_000} microseconds");
         }
 
         StageCamera.enabled = false;
 
-        var prepareStartTime = Time.realtimeSinceStartupAsDouble;
+        //var prepareStartTime = Time.realtimeSinceStartupAsDouble;
 
         PrepareNextRender();
 
-        var prepareTime = Time.realtimeSinceStartupAsDouble - prepareStartTime;
-        if (_nextRender is not null)
-            RuntimeIcons.Log.LogInfo($"{Time.frameCount}: Preparing to render {_nextRender.Value.Request.ItemKey} took {prepareTime * 1_000_000} microseconds");
+        //var prepareTime = Time.realtimeSinceStartupAsDouble - prepareStartTime;
+        //if (_nextRender is not null)
+            //RuntimeIcons.Log.LogInfo($"{Time.frameCount}: Preparing to render {_nextRender.Value.Request.ItemKey} took {prepareTime * 1_000_000} microseconds");
     }
 
     private StageComponent.IsolateStageLights _isolatorHolder;
@@ -229,7 +230,7 @@ public class CameraQueueComponent : MonoBehaviour
             //See RenderingRequest.HasIcon
             settings.TargetObject.itemProperties.itemIcon = RuntimeIcons.LoadingSprite2;
 
-            RuntimeIcons.Log.LogDebug($"Setting stage for {key}");
+            RuntimeIcons.VerboseRenderingLog(LogLevel.Info,$"Setting stage for {key}");
 
             // Set the item on the stage and isolate lighting.
             Stage.SetStageFromSettings(_nextRender.Value.Settings);
@@ -246,12 +247,15 @@ public class CameraQueueComponent : MonoBehaviour
     private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
     {
         CameraCleanup();
-        
+
+        //if it's not our stage camera do nothing
         if (camera != StageCamera)
             return;
 
-        if (!_nextRender.HasValue)
+        //if we have something to render
+        if (_nextRender is null)
             return;
+
         var instance = _nextRender.Value;
         _nextRender = null;
 
