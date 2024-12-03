@@ -411,18 +411,6 @@ public class StageComponent : MonoBehaviour
             return (stageSettings._cameraOffset, _camera.fieldOfView);
         }
     }
-    
-    private static Vector3 ComputeVerticesCenter(IEnumerable<Vector3> vertices)
-    {
-        var sum = Vector3.zero;
-        var count = 0;
-        foreach (var vertex in vertices)
-        {
-            sum += vertex;
-            count++;
-        }
-        return sum / count;
-    }
 
     internal void ResetStage()
     {
