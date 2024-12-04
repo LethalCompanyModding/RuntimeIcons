@@ -171,7 +171,7 @@ public class StageComponent : MonoBehaviour
 
         StagedTransform.position = CameraTransform.position + stageSettings.CameraOffset + stageSettings.Position;
         StagedTransform.rotation = stageSettings.Rotation;
-        LightTransform.position = StagedTransform.position;
+        LightTransform.position = CameraTransform.position + stageSettings.CameraOffset;
     }
 
 #if ENABLE_PROFILER_MARKERS
