@@ -5,7 +5,9 @@ using BepInEx.Logging;
 using RuntimeIcons.Config;
 using RuntimeIcons.Dependency;
 using RuntimeIcons.Patches;
-using Unity.Profiling;
+#if ENABLE_PROFILER_MARKERS
+    using Unity.Profiling;
+#endif
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -169,20 +171,20 @@ public class StageComponent : MonoBehaviour
 
         Memory = new TransformMemory(StagedTransform);
 
-        StagedTransform.position = CameraTransform.position + stageSettings._cameraOffset + stageSettings._position;
-        StagedTransform.rotation = stageSettings._rotation;
-        LightTransform.position = CameraTransform.position + stageSettings._cameraOffset;
+        StagedTransform.position = CameraTransform.position + stageSettings.CameraOffset + stageSettings.Position;
+        StagedTransform.rotation = stageSettings.Rotation;
+        LightTransform.position = CameraTransform.position + stageSettings.CameraOffset;
     }
 
-#if ENABLE_PROFILER_MARKERS
-    private static readonly ProfilerMarker CenterObjectOnPivotMarker = new(nameof(CenterObjectOnPivot));
-#endif
+    #if ENABLE_PROFILER_MARKERS
+        private static readonly ProfilerMarker CenterObjectOnPivotMarker = new(nameof(CenterObjectOnPivot));
+    #endif
 
     internal (Vector3 position, Quaternion rotation) CenterObjectOnPivot(StageSettings stageSettings)
     {
-#if ENABLE_PROFILER_MARKERS
-        using var markerAuto = CenterObjectOnPivotMarker.Auto();
-#endif
+        #if ENABLE_PROFILER_MARKERS
+            using var markerAuto = CenterObjectOnPivotMarker.Auto();
+        #endif
 
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
@@ -191,24 +193,24 @@ public class StageComponent : MonoBehaviour
         if (bounds is null)
             throw new InvalidOperationException("This object has no Renders!");
 
-        stageSettings._position = -bounds.Value.center;
+        stageSettings.Position = -bounds.Value.center;
 
         var vertices = stageSettings.StagedVertexes;
         for (var i = 0; i < vertices.Length; i++)
-            vertices[i] = stageSettings._position + vertices[i];
+            vertices[i] = stageSettings.Position + vertices[i];
 
-        return (stageSettings._position, stageSettings._rotation);
+        return (stageSettings.Position, stageSettings.Rotation);
     }
 
-#if ENABLE_PROFILER_MARKERS
-    private static readonly ProfilerMarker FindOptimalRotationMarker = new(nameof(FindOptimalRotation));
-#endif
+    #if ENABLE_PROFILER_MARKERS
+        private static readonly ProfilerMarker FindOptimalRotationMarker = new(nameof(FindOptimalRotation));
+    #endif
 
     internal (Vector3 position, Quaternion rotation) FindOptimalRotation(StageSettings stageSettings)
     {
-#if ENABLE_PROFILER_MARKERS
-        using var markerAuto = FindOptimalRotationMarker.Auto();
-#endif
+        #if ENABLE_PROFILER_MARKERS
+            using var markerAuto = FindOptimalRotationMarker.Auto();
+        #endif
 
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
@@ -319,8 +321,8 @@ public class StageComponent : MonoBehaviour
         }
 
         //rotate the memory and vertices
-        stageSettings._position = targetRotation * stageSettings._position;
-        stageSettings._rotation = targetRotation * stageSettings._rotation;
+        stageSettings.Position = targetRotation * stageSettings.Position;
+        stageSettings.Rotation = targetRotation * stageSettings.Rotation;
 
         var vertices = stageSettings.StagedVertexes;
         for (var i = 0; i < vertices.Length; i++)
@@ -329,7 +331,7 @@ public class StageComponent : MonoBehaviour
         //re-center memory and vertices
         var bounds2 = stageSettings.StagedVertexes.GetBounds()!.Value;
 
-        stageSettings._position -= bounds2.center;
+        stageSettings.Position -= bounds2.center;
         
         for (var i = 0; i < vertices.Length; i++)
             vertices[i] = -bounds2.center + vertices[i];
@@ -339,15 +341,15 @@ public class StageComponent : MonoBehaviour
 
     private int iterations = 1;
 
-#if ENABLE_PROFILER_MARKERS
-    private static readonly ProfilerMarker ComputeCameraAngleAndFOVMarker = new(nameof(ComputeCameraAngleAndFOV));
-#endif
+    #if ENABLE_PROFILER_MARKERS
+        private static readonly ProfilerMarker ComputeCameraAngleAndFOVMarker = new(nameof(ComputeCameraAngleAndFOV));
+    #endif
 
     internal (Vector3 offset, float fov) ComputeCameraAngleAndFOV(StageSettings stageSettings)
     {
-#if ENABLE_PROFILER_MARKERS
-        using var marker = ComputeCameraAngleAndFOVMarker.Auto();
-#endif
+        #if ENABLE_PROFILER_MARKERS
+            using var marker = ComputeCameraAngleAndFOVMarker.Auto();
+        #endif
 
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
@@ -362,23 +364,23 @@ public class StageComponent : MonoBehaviour
 
         // Adjust the pivot so that the object doesn't clip into the near plane
         var distanceToCamera = Math.Max(_camera.nearClipPlane + bounds.Value.size.z, 3f);
-        stageSettings._cameraOffset = -bounds.Value.center + Vector3.forward * distanceToCamera;
+        stageSettings.CameraOffset = -bounds.Value.center + Vector3.forward * distanceToCamera;
 
         // Calculate the camera size to fit the object being displayed
-        Vector2 marginFraction = MarginPixels / _resolution;
-        Vector2 fovScale = Vector2.one / (Vector2.one - marginFraction);
+        var marginFraction = MarginPixels / _resolution;
+        var fovScale = Vector2.one / (Vector2.one - marginFraction);
 
         if (_camera.orthographic)
         {
             var sizeY = bounds.Value.extents.y * fovScale.y;
             var sizeX = bounds.Value.extents.x * fovScale.x * _camera.aspect;
             var size = Math.Max(sizeX, sizeY);
-            stageSettings._cameraFOV = size;
+            stageSettings.CameraFOV = size;
         }
         else
         {
             for (var i = 0; i < vertices.Length; i++)
-                vertices[i] += stageSettings._cameraOffset;
+                vertices[i] += stageSettings.CameraOffset;
 
             Quaternion rotation = Quaternion.identity;
 
@@ -400,7 +402,7 @@ public class StageComponent : MonoBehaviour
                 rotation = rotation * Quaternion.AngleAxis((angleMinX + angleMaxX) / 2, Vector3.right);
             }
 
-            stageSettings._cameraRotation = rotation;
+            stageSettings.CameraRotation = rotation;
 
             forward = rotation * Vector3.forward;
             right = rotation * Vector3.right;
@@ -412,10 +414,10 @@ public class StageComponent : MonoBehaviour
             var fovAngleY =
                 Camera.HorizontalToVerticalFieldOfView(Math.Max(-angleMinY, angleMaxY) * 2, _camera.aspect) *
                 fovScale.x;
-            stageSettings._cameraFOV = Math.Max(fovAngleX, fovAngleY);
+            stageSettings.CameraFOV = Math.Max(fovAngleX, fovAngleY);
         }
 
-        return (stageSettings._cameraOffset, stageSettings._cameraFOV);
+        return (stageSettings.CameraOffset, stageSettings.CameraFOV);
     }
 
     private static void GetCameraAngles(Vector3 forward, Vector3 direction, IEnumerable<Vector3> vertices,
@@ -562,18 +564,18 @@ public class StageComponent : MonoBehaviour
     {
         internal CameraQueueComponent.RenderingRequest TargetRequest;
 
-        internal Vector3[] StagedVertexes;
+        internal readonly Vector3[] StagedVertexes;
 
         internal GrabbableObject TargetObject => TargetRequest.GrabbableObject;
         internal Transform TargetTransform => TargetObject.transform;
         internal OverrideHolder OverrideHolder => TargetRequest.OverrideHolder;
 
-        internal Vector3 _position = Vector3.zero;
-        internal Vector3 _cameraOffset = Vector3.zero;
-        internal Quaternion _rotation = Quaternion.identity;
+        internal Vector3 Position = Vector3.zero;
+        internal Vector3 CameraOffset = Vector3.zero;
+        internal Quaternion Rotation = Quaternion.identity;
 
-        internal Quaternion _cameraRotation = Quaternion.identity;
-        internal float _cameraFOV = 45;
+        internal Quaternion CameraRotation = Quaternion.identity;
+        internal float CameraFOV = 45;
 
         internal StageSettings(StageComponent stage, CameraQueueComponent.RenderingRequest renderingRequest)
         {
@@ -581,17 +583,16 @@ public class StageComponent : MonoBehaviour
             
             if (OverrideHolder is { ItemRotation: not null })
             {
-                _rotation = Quaternion.Euler(OverrideHolder.ItemRotation.Value + new Vector3(0, 90f, 0));
+                Rotation = Quaternion.Euler(OverrideHolder.ItemRotation.Value + new Vector3(0, 90f, 0));
             }
             else
             {
-                _rotation = Quaternion.Euler(TargetObject.itemProperties.restingRotation.x,
+                Rotation = Quaternion.Euler(TargetObject.itemProperties.restingRotation.x,
                     TargetObject.itemProperties.floorYOffset + 90f,
                     TargetObject.itemProperties.restingRotation.z);
             }
 
-
-            var matrix = Matrix4x4.TRS(Vector3.zero, _rotation, TargetTransform.localScale);
+            var matrix = Matrix4x4.TRS(Vector3.zero, Rotation, TargetTransform.lossyScale);
 
             var executionOptions = new ExecutionOptions()
             {
