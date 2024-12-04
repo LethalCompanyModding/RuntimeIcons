@@ -376,26 +376,23 @@ public class StageComponent : MonoBehaviour
         }
         else
         {
-            var updateMatrix = Matrix4x4.TRS(_camera.transform.position + stageSettings._cameraOffset, Quaternion.identity, Vector3.one);
             for (var i = 0; i < vertices.Length; i++)
-                vertices[i] = updateMatrix.MultiplyPoint3x4(vertices[i]);
-
-            const int iterations = 1;
+                vertices[i] += stageSettings._cameraOffset;
 
             float angleMinX, angleMaxX;
             float angleMinY, angleMaxY;
 
             for (var i = 0; i < iterations; i++)
             {
-                GetCameraAngles(_camera, CameraTransform.right, vertices, out angleMinY, out angleMaxY);
+                GetCameraAngles(CameraTransform.forward, CameraTransform.right, vertices, out angleMinY, out angleMaxY);
                 _camera.transform.Rotate(Vector3.up, (angleMinY + angleMaxY) / 2, Space.World);
 
-                GetCameraAngles(_camera, -CameraTransform.up, vertices, out angleMinX, out angleMaxX);
+                GetCameraAngles(CameraTransform.forward, -CameraTransform.up, vertices, out angleMinX, out angleMaxX);
                 _camera.transform.Rotate(Vector3.right, (angleMinX + angleMaxX) / 2, Space.Self);
             }
 
-            GetCameraAngles(_camera, CameraTransform.right, vertices, out angleMinY, out angleMaxY);
-            GetCameraAngles(_camera, -CameraTransform.up, vertices, out angleMinX, out angleMaxX);
+            GetCameraAngles(CameraTransform.forward, CameraTransform.right, vertices, out angleMinY, out angleMaxY);
+            GetCameraAngles(CameraTransform.forward, -CameraTransform.up, vertices, out angleMinX, out angleMaxX);
 
             var fovAngleX = Math.Max(-angleMinX, angleMaxX) * 2 * fovScale.y;
             var fovAngleY =
@@ -406,18 +403,15 @@ public class StageComponent : MonoBehaviour
         }
     }
 
-    private static void GetCameraAngles(Camera camera, Vector3 direction, IEnumerable<Vector3> vertices,
+    private static void GetCameraAngles(Vector3 forward, Vector3 direction, IEnumerable<Vector3> vertices,
         out float angleMin, out float angleMax)
     {
-        var position = camera.transform.position;
-        var forwardPlane = new Plane(camera.transform.forward, position);
-        var directionPlane = new Plane(direction, position);
         var tangentMin = float.PositiveInfinity;
         var tangentMax = float.NegativeInfinity;
 
         foreach (var vertex in vertices)
         {
-            var tangent = directionPlane.GetDistanceToPoint(vertex) / forwardPlane.GetDistanceToPoint(vertex);
+            var tangent = Vector3.Dot(vertex, direction) / Vector3.Dot(vertex, forward);
             tangentMin = Math.Min(tangent, tangentMin);
             tangentMax = Math.Max(tangent, tangentMax);
         }
