@@ -352,7 +352,7 @@ public class StageComponent : MonoBehaviour
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
 
-        var vertices = stageSettings.StagedVertexes.ToArray();
+        var vertices = stageSettings.StagedVertexes;
         if (vertices.Length == 0)
             throw new InvalidOperationException("This object has no Renders!");
 
