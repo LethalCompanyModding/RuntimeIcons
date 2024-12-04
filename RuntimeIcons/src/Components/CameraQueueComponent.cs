@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using BepInEx;
 using BepInEx.Logging;
 using RuntimeIcons.Config;
@@ -20,6 +22,16 @@ public class CameraQueueComponent : MonoBehaviour
 {
     private readonly PriorityQueue<RenderingRequest, long> _renderingQueue = new (50);
 
+    private readonly ConcurrentQueue<StageComponent.StageSettings> _toComputeQueue = new();
+    private readonly ConcurrentQueue<StageComponent.StageSettings> _readyQueue = new();
+    private readonly ConcurrentQueue<Item> _doneQueue = new();
+    private readonly ConcurrentQueue<Item> _toRetryQueue = new();
+
+    private Thread _computingThread;
+    private readonly EventWaitHandle _computingHandle = new ManualResetEvent(false);
+    //this exists simply so we can rook at the values in UE
+    private readonly ThreadMemory _computingMemory = new();
+
     private readonly List<RenderingResult> _renderedItems = [];
 
     internal Camera StageCamera;
@@ -29,9 +41,126 @@ public class CameraQueueComponent : MonoBehaviour
 
     private void Start()
     {
+        _computingThread = new Thread(ComputeThread)
+        {
+            IsBackground = true
+        };
+        _computingThread.Start();
         StageCamera = Stage.Camera;
         RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
         RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
+    }
+    
+    private void ComputeThread()
+    {
+        //this assignments are like this simply so we can rook at the values in UE
+        HashSet<Item> readyItems = _computingMemory.ReadyItems; // = [];
+        ConcurrentDictionary<Item, List<StageComponent.StageSettings>> alternativeRequests = _computingMemory.AlternativeRequests; // = [];
+        
+        RuntimeIcons.Log.LogWarning("Starting compute thread!");
+        StageComponent.StageSettings toCompute = null;
+        while (true)
+        {
+            try
+            {
+                //if we're not doing anything
+                if (_toComputeQueue.IsEmpty && _toRetryQueue.IsEmpty && _doneQueue.IsEmpty)
+                {
+                    //wait for something
+                    _computingHandle.Reset();
+                    _computingHandle.WaitOne();
+                }
+
+                //forget completed items
+                while (_doneQueue.TryDequeue(out var item))
+                {
+                    readyItems.Remove(item);
+                    alternativeRequests.Remove(item, out _);
+                }
+                
+                //check if we have to retry some item
+                while (_toRetryQueue.TryDequeue(out var item))
+                {
+                    if (alternativeRequests.TryGetValue(item, out var list))
+                    {
+                        if (list.Count <= 0)
+                        {
+                            alternativeRequests.Remove(item, out _);
+                        }
+                        else
+                        {
+                            toCompute = list[0];
+                            list.RemoveAt(0);
+                            break;
+                        }
+                    }
+                    
+                    readyItems.Remove(item);
+                }
+                
+                //if we have nothing to retry, pull new requests
+                if (toCompute is null)
+                {
+                    while (_toComputeQueue.TryDequeue(out var stageSettings))
+                    {
+                        var item = stageSettings.TargetRequest.Item;
+
+                        if (!readyItems.Add(item))
+                        {
+                            alternativeRequests.GetOrAdd(item, _ => []).Add(stageSettings);
+                        }
+                        else
+                        {
+                            toCompute = stageSettings;
+                            break;
+                        }
+                    }
+                }
+
+                if (toCompute is not null)
+                {
+                    var target = toCompute.TargetRequest;
+                    try
+                    {
+                        //pre-compute transform and FOV
+
+                        RuntimeIcons.VerboseRenderingLog(LogLevel.Info, $"Computing stage for {target.ItemKey}");
+
+                        var (targetPosition, targetRotation) = Stage.CenterObjectOnPivot(toCompute);
+
+                        RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,
+                            $"Item: offset {targetPosition} rotation {targetRotation}");
+
+                        var (_, stageRotation) = Stage.FindOptimalRotation(toCompute);
+
+                        RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,
+                            $"Stage: rotation {stageRotation.eulerAngles}");
+
+                        var (cameraOffset, cameraFov) = Stage.ComputeCameraAngleAndFOV(toCompute);
+
+                        RuntimeIcons.VerboseRenderingLog(LogLevel.Debug, $"Camera Offset: {cameraOffset}");
+                        RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,
+                            $"Camera {(StageCamera.orthographic ? "orthographicSize" : "field of view")}: {cameraFov}");
+
+                        _readyQueue.Enqueue(toCompute);
+                    }
+                    catch (Exception ex)
+                    {
+                        var key = target.ItemKey;
+                        RuntimeIcons.Log.LogError($"Error Computing {key}:\n{ex}");
+                    }
+                    finally
+                    {
+                        toCompute = null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                RuntimeIcons.Log.LogError($"Something went wrong computing stageSettings\n{ex}");
+            }
+            Thread.Yield();
+        }
     }
 
     public bool EnqueueObject(GrabbableObject grabbableObject, Sprite errorSprite = null, long delay = 0)
@@ -74,6 +203,10 @@ public class CameraQueueComponent : MonoBehaviour
 
         if (!UnpremultiplyAndCountTransparent.TryGetTransparentCount(render.ComputeID, out var transparentCount))
             return false;
+        
+        //notify thread this item is completed!
+        _doneQueue.Enqueue(render.Request.Item);
+        _computingHandle.Set();
 
         var texture = render.Texture;
 
@@ -127,7 +260,6 @@ public class CameraQueueComponent : MonoBehaviour
         _nextRender = null;
 
         var currentFrame = Time.frameCount;
-        RenderingRequest? found = null;
 
         while (_renderingQueue.TryPeek(out _, out var targetFrame))
         {
@@ -136,67 +268,65 @@ public class CameraQueueComponent : MonoBehaviour
 
             var candidateRequest = _renderingQueue.Dequeue();
 
-            if (candidateRequest.GrabbableObject && !candidateRequest.GrabbableObject.isPocketed && !candidateRequest.HasIcon)
+            if (!candidateRequest.GrabbableObject || candidateRequest.GrabbableObject.isPocketed ||
+                candidateRequest.HasIcon) continue;
+            
+            var renderSettings = new StageComponent.StageSettings(Stage, candidateRequest);
+            _toComputeQueue.Enqueue(renderSettings);
+            _computingHandle.Set();
+        }
+
+        StageComponent.StageSettings found = null;
+        RenderingRequest request;
+        
+        while (_readyQueue.TryDequeue(out var stageSettings))
+        {
+            request = stageSettings.TargetRequest;
+            if (request.GrabbableObject && !request.GrabbableObject.isPocketed && !request.HasIcon)
             {
-                found = candidateRequest;
+                found = stageSettings;
                 break;
             }
-        }
-
-        if (found is null)
-            return;
-
-        var target = found.Value;
-
-        try
-        {
-            //pre-compute transform and FOV
-
-            RuntimeIcons.VerboseRenderingLog(LogLevel.Info,$"Computing stage for {target.ItemKey}");
-
-            var renderSettings = new StageComponent.StageSettings(Stage, target);
-
-            var (targetPosition, targetRotation) = Stage.CenterObjectOnPivot(renderSettings);
-
-            RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"Item: offset {targetPosition} rotation {targetRotation}");
-
-            var (_, stageRotation) = Stage.FindOptimalRotation(renderSettings);
-
-            RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"Stage: rotation {stageRotation.eulerAngles}");
-
-            var (cameraOffset, cameraFov) = Stage.ComputeCameraAngleAndFOV(renderSettings);
-
-            RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"Camera Offset: {cameraOffset}");
-            RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,
-                $"Camera {(StageCamera.orthographic ? "orthographicSize" : "field of view")}: {cameraFov}");
-
-            // Extract the image into a new texture without mipmaps
-            var targetTexture = StageCamera.targetTexture;
-            var texture = new Texture2D(targetTexture.width, targetTexture.height, targetTexture.graphicsFormat,
-                mipCount: 1,
-                TextureCreationFlags.DontInitializePixels)
-            {
-                name =
-                    $"{nameof(RuntimeIcons)}.{target.GrabbableObject.itemProperties.itemName}Texture",
-                filterMode = FilterMode.Point,
-            };
-
-            _nextRender = new RenderingInstance(target, renderSettings, texture);
-
-            if (StageCamera.orthographic)
-                StageCamera.orthographicSize = renderSettings.CameraFOV;
             else
-                StageCamera.fieldOfView = renderSettings.CameraFOV;
-            StageCamera.transform.localRotation = renderSettings.CameraRotation;
-
-            StageCamera.enabled = true;
+            {
+                //notify thread to retry another item of this type
+                _toRetryQueue.Enqueue(request.Item);
+                _computingHandle.Set();
+            }
         }
-        catch (Exception ex)
+        
+        if (found is null)
         {
-            var key = target.ItemKey;
-            _nextRender = null;
-            RuntimeIcons.Log.LogError($"Error Computing {key}:\n{ex}");
+            StageCamera.enabled = false;
+            return;
         }
+
+        request = found.TargetRequest;
+        
+        RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{request.ItemKey} is the next render");
+
+        // Extract the image into a new texture without mipmaps
+        var targetTexture = StageCamera.targetTexture;
+        var texture = new Texture2D(targetTexture.width, targetTexture.height, targetTexture.graphicsFormat,
+            mipCount: 1,
+            TextureCreationFlags.DontInitializePixels)
+        {
+            name =
+                $"{nameof(RuntimeIcons)}.{request.GrabbableObject.itemProperties.itemName}Texture",
+            filterMode = FilterMode.Point,
+        };
+
+        _nextRender = new RenderingInstance(request, found, texture);
+
+        if (StageCamera.orthographic)
+            StageCamera.orthographicSize = found.CameraFOV;
+        else
+            StageCamera.fieldOfView = found.CameraFOV;
+        StageCamera.transform.localRotation = found.CameraRotation;
+
+        StageCamera.enabled = true;
+        
+        
     }
 
     private void Update()
@@ -208,7 +338,6 @@ public class CameraQueueComponent : MonoBehaviour
                 _renderedItems.RemoveAt(0);
         }
 
-        StageCamera.enabled = false;
 
         PrepareNextRender();
     }
@@ -230,6 +359,16 @@ public class CameraQueueComponent : MonoBehaviour
         var key = _nextRender.Value.Request.ItemKey;
         var settings = _nextRender.Value.Settings;
 
+        if (!settings.TargetObject)
+        {
+            //skip this frame
+            _nextRender = null;
+            //notify thread to retry this item type
+            _toRetryQueue.Enqueue(settings.TargetRequest.Item);
+            _computingHandle.Set();
+            return;
+        }
+        
         try
         {
             //mark the item as `Rendered` ( LoadingSprite is considered invalid icon while LoadingSprite2 is considered a valid icon )
@@ -340,6 +479,7 @@ public class CameraQueueComponent : MonoBehaviour
         internal RenderingRequest(GrabbableObject grabbableObject, Sprite errorSprite)
         {
             GrabbableObject = grabbableObject;
+            Item = GrabbableObject.itemProperties;
             ErrorSprite = errorSprite;
 
             ItemKey = CategorizeItemPatch.GetPathForItem(grabbableObject.itemProperties)
@@ -351,6 +491,8 @@ public class CameraQueueComponent : MonoBehaviour
         }
 
         internal readonly GrabbableObject GrabbableObject;
+        
+        internal readonly Item Item;
 
         internal readonly Sprite ErrorSprite;
 
@@ -362,8 +504,6 @@ public class CameraQueueComponent : MonoBehaviour
         {
             get
             {
-                var item = GrabbableObject.itemProperties;
-
                 var inList = PluginConfig.ItemList.Contains(ItemKey);
 
                 if (PluginConfig.ItemListBehaviour switch
@@ -374,16 +514,16 @@ public class CameraQueueComponent : MonoBehaviour
                     })
                     return true;
 
-                if (!item.itemIcon)
+                if (!Item.itemIcon)
                     return false;
-                if (item.itemIcon == RuntimeIcons.LoadingSprite)
+                if (Item.itemIcon == RuntimeIcons.LoadingSprite)
                     return false;
-                if (item.itemIcon.name == "ScrapItemIcon")
+                if (Item.itemIcon.name == "ScrapItemIcon")
                     return false;
-                if (item.itemIcon.name == "ScrapItemIcon2")
+                if (Item.itemIcon.name == "ScrapItemIcon2")
                     return false;
 
-                if (OverrideHolder?.OverrideSprite && item.itemIcon != OverrideHolder.OverrideSprite)
+                if (OverrideHolder?.OverrideSprite && Item.itemIcon != OverrideHolder.OverrideSprite)
                     return false;
 
                 return true;
@@ -426,4 +566,17 @@ public class CameraQueueComponent : MonoBehaviour
 
         internal readonly int ComputeID = computeID;
     }
+    
+    //this exists simply so we can rook at the values in UE
+    public struct ThreadMemory
+    {
+        public ThreadMemory()
+        {
+        }
+
+        internal readonly HashSet<Item> ReadyItems = [];
+        internal readonly ConcurrentDictionary<Item, List<StageComponent.StageSettings>> AlternativeRequests = [];
+        
+    }
+
 }
