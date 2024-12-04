@@ -363,17 +363,17 @@ public class StageComponent : MonoBehaviour
             throw new InvalidOperationException("This object has no Bounds!");
 
         // Adjust the pivot so that the object doesn't clip into the near plane
-        var distanceToCamera = Math.Max(_camera.nearClipPlane + bounds.Value.size.z, 3f);
+        var distanceToCamera = Math.Max(stageSettings.CameraNearClip + bounds.Value.size.z, 3f);
         stageSettings.CameraOffset = -bounds.Value.center + Vector3.forward * distanceToCamera;
 
         // Calculate the camera size to fit the object being displayed
         var marginFraction = MarginPixels / _resolution;
         var fovScale = Vector2.one / (Vector2.one - marginFraction);
 
-        if (_camera.orthographic)
+        if (stageSettings.CameraOrthographic)
         {
             var sizeY = bounds.Value.extents.y * fovScale.y;
-            var sizeX = bounds.Value.extents.x * fovScale.x * _camera.aspect;
+            var sizeX = bounds.Value.extents.x * fovScale.x * stageSettings.CameraAspect;
             var size = Math.Max(sizeX, sizeY);
             stageSettings.CameraFOV = size;
         }
@@ -412,7 +412,7 @@ public class StageComponent : MonoBehaviour
 
             var fovAngleX = Math.Max(-angleMinX, angleMaxX) * 2 * fovScale.y;
             var fovAngleY =
-                Camera.HorizontalToVerticalFieldOfView(Math.Max(-angleMinY, angleMaxY) * 2, _camera.aspect) *
+                Camera.HorizontalToVerticalFieldOfView(Math.Max(-angleMinY, angleMaxY) * 2, stageSettings.CameraAspect) *
                 fovScale.x;
             stageSettings.CameraFOV = Math.Max(fovAngleX, fovAngleY);
         }
@@ -574,11 +574,19 @@ public class StageComponent : MonoBehaviour
         internal Vector3 CameraOffset = Vector3.zero;
         internal Quaternion Rotation = Quaternion.identity;
 
+        internal readonly bool CameraOrthographic;
+        internal readonly float CameraAspect;
+        internal readonly float CameraNearClip;
+        
         internal Quaternion CameraRotation = Quaternion.identity;
         internal float CameraFOV = 45;
 
         internal StageSettings(StageComponent stage, CameraQueueComponent.RenderingRequest renderingRequest)
         {
+            CameraOrthographic = stage._camera.orthographic;
+            CameraAspect = stage._camera.aspect;
+            CameraNearClip = stage._camera.nearClipPlane;
+            
             TargetRequest = renderingRequest;
             
             if (OverrideHolder is { ItemRotation: not null })
