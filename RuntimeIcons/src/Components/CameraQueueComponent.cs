@@ -162,7 +162,7 @@ public class CameraQueueComponent : MonoBehaviour
 
             RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"Stage: rotation {stageRotation.eulerAngles}");
 
-            var (cameraOffset, cameraFov) = Stage.PrepareCameraForShot(renderSettings);
+            var (cameraOffset, cameraFov) = Stage.ComputeCameraAngleAndFOV(renderSettings);
 
             RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"Camera Offset: {cameraOffset}");
             RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,
@@ -180,6 +180,12 @@ public class CameraQueueComponent : MonoBehaviour
             };
 
             _nextRender = new RenderingInstance(target, renderSettings, texture);
+
+            if (StageCamera.orthographic)
+                StageCamera.orthographicSize = renderSettings._cameraFOV;
+            else
+                StageCamera.fieldOfView = renderSettings._cameraFOV;
+            StageCamera.transform.localRotation = renderSettings._cameraRotation;
 
             StageCamera.enabled = true;
         }

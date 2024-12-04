@@ -337,14 +337,16 @@ public class StageComponent : MonoBehaviour
         return (-bounds2.center, targetRotation);
     }
 
+    private int iterations = 1;
+
 #if ENABLE_PROFILER_MARKERS
-    private static readonly ProfilerMarker PrepareCameraForShotMarker = new(nameof(PrepareCameraForShot));
+    private static readonly ProfilerMarker ComputeCameraAngleAndFOVMarker = new(nameof(ComputeCameraAngleAndFOV));
 #endif
 
-    internal (Vector3 offset, float fov) PrepareCameraForShot(StageSettings stageSettings)
+    internal (Vector3 offset, float fov) ComputeCameraAngleAndFOV(StageSettings stageSettings)
     {
 #if ENABLE_PROFILER_MARKERS
-        using var marker = PrepareCameraForShotMarker.Auto();
+        using var marker = ComputeCameraAngleAndFOVMarker.Auto();
 #endif
 
         if (stageSettings == null)
@@ -371,8 +373,7 @@ public class StageComponent : MonoBehaviour
             var sizeY = bounds.Value.extents.y * fovScale.y;
             var sizeX = bounds.Value.extents.x * fovScale.x * _camera.aspect;
             var size = Math.Max(sizeX, sizeY);
-            _camera.orthographicSize = size;
-            return (stageSettings._cameraOffset, _camera.orthographicSize);
+            stageSettings._cameraFOV = size;
         }
         else
         {
@@ -380,34 +381,41 @@ public class StageComponent : MonoBehaviour
                 vertices[i] += stageSettings._cameraOffset;
 
             Quaternion rotation = Quaternion.identity;
+
+            Vector3 forward, right, down;
             float angleMinX, angleMaxX;
             float angleMinY, angleMaxY;
 
             for (var i = 0; i < iterations; i++)
             {
-                var forward = rotation * Vector3.forward;
-                var right = rotation * Vector3.right;
+                forward = rotation * Vector3.forward;
+                right = rotation * Vector3.right;
 
                 GetCameraAngles(forward, right, vertices, out angleMinY, out angleMaxY);
                 rotation = Quaternion.AngleAxis((angleMinY + angleMaxY) / 2, Vector3.up) * rotation;
 
                 forward = rotation * Vector3.forward;
-                var down = rotation * Vector3.down;
+                down = rotation * Vector3.down;
                 GetCameraAngles(forward, down, vertices, out angleMinX, out angleMaxX);
                 rotation = rotation * Quaternion.AngleAxis((angleMinX + angleMaxX) / 2, Vector3.right);
             }
 
-            CameraTransform.localRotation = rotation;
-            GetCameraAngles(CameraTransform.forward, CameraTransform.right, vertices, out angleMinY, out angleMaxY);
-            GetCameraAngles(CameraTransform.forward, -CameraTransform.up, vertices, out angleMinX, out angleMaxX);
+            stageSettings._cameraRotation = rotation;
+
+            forward = rotation * Vector3.forward;
+            right = rotation * Vector3.right;
+            down = rotation * Vector3.down;
+            GetCameraAngles(forward, right, vertices, out angleMinY, out angleMaxY);
+            GetCameraAngles(forward, down, vertices, out angleMinX, out angleMaxX);
 
             var fovAngleX = Math.Max(-angleMinX, angleMaxX) * 2 * fovScale.y;
             var fovAngleY =
                 Camera.HorizontalToVerticalFieldOfView(Math.Max(-angleMinY, angleMaxY) * 2, _camera.aspect) *
                 fovScale.x;
-            _camera.fieldOfView = Math.Max(fovAngleX, fovAngleY);
-            return (stageSettings._cameraOffset, _camera.fieldOfView);
+            stageSettings._cameraFOV = Math.Max(fovAngleX, fovAngleY);
         }
+
+        return (stageSettings._cameraOffset, stageSettings._cameraFOV);
     }
 
     private static void GetCameraAngles(Vector3 forward, Vector3 direction, IEnumerable<Vector3> vertices,
@@ -563,6 +571,9 @@ public class StageComponent : MonoBehaviour
         internal Vector3 _position = Vector3.zero;
         internal Vector3 _cameraOffset = Vector3.zero;
         internal Quaternion _rotation = Quaternion.identity;
+
+        internal Quaternion _cameraRotation = Quaternion.identity;
+        internal float _cameraFOV = 45;
 
         internal StageSettings(StageComponent stage, CameraQueueComponent.RenderingRequest renderingRequest)
         {
