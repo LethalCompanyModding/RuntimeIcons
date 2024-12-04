@@ -7,7 +7,9 @@ using RuntimeIcons.Config;
 using RuntimeIcons.Dotnet.Backports;
 using RuntimeIcons.Patches;
 using RuntimeIcons.Utils;
-using Unity.Profiling;
+#if ENABLE_PROFILER_MARKERS
+    using Unity.Profiling;
+#endif
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
@@ -112,15 +114,15 @@ public class CameraQueueComponent : MonoBehaviour
 
     private RenderingInstance? _nextRender;
 
-#if ENABLE_PROFILER_MARKERS
-    private static readonly ProfilerMarker PrepareNextRenderMarker = new(nameof(PrepareNextRender));
-#endif
+    #if ENABLE_PROFILER_MARKERS
+        private static readonly ProfilerMarker PrepareNextRenderMarker = new(nameof(PrepareNextRender));
+    #endif
 
     private void PrepareNextRender()
     {
-#if ENABLE_PROFILER_MARKERS
-        var markerAuto = PrepareNextRenderMarker.Auto();
-#endif
+        #if ENABLE_PROFILER_MARKERS
+            var markerAuto = PrepareNextRenderMarker.Auto();
+        #endif
 
         _nextRender = null;
 
@@ -182,10 +184,10 @@ public class CameraQueueComponent : MonoBehaviour
             _nextRender = new RenderingInstance(target, renderSettings, texture);
 
             if (StageCamera.orthographic)
-                StageCamera.orthographicSize = renderSettings._cameraFOV;
+                StageCamera.orthographicSize = renderSettings.CameraFOV;
             else
-                StageCamera.fieldOfView = renderSettings._cameraFOV;
-            StageCamera.transform.localRotation = renderSettings._cameraRotation;
+                StageCamera.fieldOfView = renderSettings.CameraFOV;
+            StageCamera.transform.localRotation = renderSettings.CameraRotation;
 
             StageCamera.enabled = true;
         }
@@ -248,16 +250,16 @@ public class CameraQueueComponent : MonoBehaviour
         }
     }
 
-#if ENABLE_PROFILER_MARKERS
-    private static readonly ProfilerMarker OnEndCameraMarker = new(nameof(OnEndCameraRendering));
-    private static readonly ProfilerMarker DumpRenderMarker = new("Dump Icon Render");
-#endif
+    #if ENABLE_PROFILER_MARKERS
+        private static readonly ProfilerMarker OnEndCameraMarker = new(nameof(OnEndCameraRendering));
+        private static readonly ProfilerMarker DumpRenderMarker = new("Dump Icon Render");
+    #endif
 
     private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
     {
-#if ENABLE_PROFILER_MARKERS
-        using var markerAuto = OnEndCameraMarker.Auto();
-#endif
+        #if ENABLE_PROFILER_MARKERS
+            using var markerAuto = OnEndCameraMarker.Auto();
+        #endif
 
         CameraCleanup();
 
@@ -284,9 +286,9 @@ public class CameraQueueComponent : MonoBehaviour
             var targetItem = instance.Request.GrabbableObject.itemProperties;
             cmd.RequestAsyncReadback(instance.Texture, request =>
             {
-#if ENABLE_PROFILER_MARKERS
-                using var dumpMarkerAuto = DumpRenderMarker.Auto();
-#endif
+                #if ENABLE_PROFILER_MARKERS
+                    using var dumpMarkerAuto = DumpRenderMarker.Auto();
+                #endif
 
                 var rawData = request.GetData<byte>();
 
