@@ -36,7 +36,7 @@ public class StageComponent : MonoBehaviour
     internal Transform LightTransform => LightGo.transform;
     private Transform CameraTransform => CameraGo.transform;
 
-    private Camera _camera;
+    internal Camera Camera;
     private Vector2Int _resolution = new Vector2Int(128, 128);
 
     private ColorBufferFormat? _originalColorBufferFormat;
@@ -47,14 +47,14 @@ public class StageComponent : MonoBehaviour
         set
         {
             _resolution = value;
-            _camera.aspect = (float)_resolution.x / _resolution.y;
+            Camera.aspect = (float)_resolution.x / _resolution.y;
             CreateRenderTexture();
         }
     }
 
     internal Vector2 MarginPixels = new Vector2(0, 0);
 
-    internal int CullingMask => _camera.cullingMask;
+    internal int CullingMask => Camera.cullingMask;
 
     internal Transform StagedTransform { get; private set; }
     internal GrabbableObject StagedItem { get; private set; }
@@ -98,7 +98,7 @@ public class StageComponent : MonoBehaviour
 
         // Add a Camera component to the GameObject
         var cam = cameraGo.AddComponent<Camera>();
-        stageComponent._camera = cam;
+        stageComponent.Camera = cam;
 
         CullFactoryCompatibility.DisableCullingForCamera(cam);
 
@@ -138,7 +138,7 @@ public class StageComponent : MonoBehaviour
 
     private void CreateRenderTexture()
     {
-        _camera.targetTexture = new RenderTexture(
+        Camera.targetTexture = new RenderTexture(
             Resolution.x,
             Resolution.y,
             depth: 0,
@@ -488,7 +488,7 @@ public class StageComponent : MonoBehaviour
 
     private void BeginCameraRendering(ScriptableRenderContext context, Camera camera)
     {
-        if (camera != _camera)
+        if (camera != Camera)
             return;
 
         SetAlphaEnabled(true);
@@ -496,7 +496,7 @@ public class StageComponent : MonoBehaviour
 
     private void EndCameraRendering(ScriptableRenderContext context, Camera camera)
     {
-        if (camera != _camera)
+        if (camera != Camera)
             return;
 
         SetAlphaEnabled(false);
@@ -583,9 +583,9 @@ public class StageComponent : MonoBehaviour
 
         internal StageSettings(StageComponent stage, CameraQueueComponent.RenderingRequest renderingRequest)
         {
-            CameraOrthographic = stage._camera.orthographic;
-            CameraAspect = stage._camera.aspect;
-            CameraNearClip = stage._camera.nearClipPlane;
+            CameraOrthographic = stage.Camera.orthographic;
+            CameraAspect = stage.Camera.aspect;
+            CameraNearClip = stage.Camera.nearClipPlane;
             
             TargetRequest = renderingRequest;
             

@@ -22,14 +22,14 @@ public class CameraQueueComponent : MonoBehaviour
 
     private readonly List<RenderingResult> _renderedItems = [];
 
-    private Camera StageCamera { get; set; }
-    internal StageComponent Stage { get; set; }
+    internal Camera StageCamera;
+    internal StageComponent Stage;
 
     private bool _isStaged = false;
 
     private void Start()
     {
-        StageCamera = GetComponent<Camera>();
+        StageCamera = Stage.Camera;
         RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
         RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
     }
