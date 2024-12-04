@@ -379,18 +379,25 @@ public class StageComponent : MonoBehaviour
             for (var i = 0; i < vertices.Length; i++)
                 vertices[i] += stageSettings._cameraOffset;
 
+            Quaternion rotation = Quaternion.identity;
             float angleMinX, angleMaxX;
             float angleMinY, angleMaxY;
 
             for (var i = 0; i < iterations; i++)
             {
-                GetCameraAngles(CameraTransform.forward, CameraTransform.right, vertices, out angleMinY, out angleMaxY);
-                _camera.transform.Rotate(Vector3.up, (angleMinY + angleMaxY) / 2, Space.World);
+                var forward = rotation * Vector3.forward;
+                var right = rotation * Vector3.right;
 
-                GetCameraAngles(CameraTransform.forward, -CameraTransform.up, vertices, out angleMinX, out angleMaxX);
-                _camera.transform.Rotate(Vector3.right, (angleMinX + angleMaxX) / 2, Space.Self);
+                GetCameraAngles(forward, right, vertices, out angleMinY, out angleMaxY);
+                rotation = Quaternion.AngleAxis((angleMinY + angleMaxY) / 2, Vector3.up) * rotation;
+
+                forward = rotation * Vector3.forward;
+                var down = rotation * Vector3.down;
+                GetCameraAngles(forward, down, vertices, out angleMinX, out angleMaxX);
+                rotation = rotation * Quaternion.AngleAxis((angleMinX + angleMaxX) / 2, Vector3.right);
             }
 
+            CameraTransform.localRotation = rotation;
             GetCameraAngles(CameraTransform.forward, CameraTransform.right, vertices, out angleMinY, out angleMaxY);
             GetCameraAngles(CameraTransform.forward, -CameraTransform.up, vertices, out angleMinX, out angleMaxX);
 
