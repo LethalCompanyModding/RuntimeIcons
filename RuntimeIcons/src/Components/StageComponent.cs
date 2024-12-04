@@ -169,9 +169,9 @@ public class StageComponent : MonoBehaviour
 
         Memory = new TransformMemory(StagedTransform);
 
-        StagedTransform.position = CameraTransform.position + stageSettings.CameraOffset + stageSettings.Position;
-        StagedTransform.rotation = stageSettings.Rotation;
-        LightTransform.position = CameraTransform.position + stageSettings.CameraOffset;
+        StagedTransform.position = CameraTransform.position + stageSettings._cameraOffset + stageSettings._position;
+        StagedTransform.rotation = stageSettings._rotation;
+        LightTransform.position = CameraTransform.position + stageSettings._cameraOffset;
     }
 
 #if ENABLE_PROFILER_MARKERS
@@ -197,7 +197,7 @@ public class StageComponent : MonoBehaviour
         for (var i = 0; i < vertices.Length; i++)
             vertices[i] = stageSettings._position + vertices[i];
 
-        return (stageSettings.Position, stageSettings.Rotation);
+        return (stageSettings._position, stageSettings._rotation);
     }
 
 #if ENABLE_PROFILER_MARKERS
@@ -563,11 +563,6 @@ public class StageComponent : MonoBehaviour
         internal Vector3 _position = Vector3.zero;
         internal Vector3 _cameraOffset = Vector3.zero;
         internal Quaternion _rotation = Quaternion.identity;
-
-        internal Vector3 Position => _position;
-
-        internal Vector3 CameraOffset => _cameraOffset;
-        internal Quaternion Rotation => _rotation;
 
         internal StageSettings(StageComponent stage, CameraQueueComponent.RenderingRequest renderingRequest)
         {
