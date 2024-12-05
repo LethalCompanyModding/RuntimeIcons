@@ -63,7 +63,7 @@ public class RuntimeIcons : BaseUnityPlugin
             PluginConfig.Init();
 
             Log.LogInfo("Loading Compute shader");
-            
+
             if (!LoadComputeShader())
                 return;
 
@@ -127,7 +127,7 @@ public class RuntimeIcons : BaseUnityPlugin
     {
         Log.Log(logLevel, message());
     }
-    
+
     internal static void VerboseRenderingLog(LogLevel logLevel, string message)
     {
         if ((logLevel & PluginConfig.VerboseRenderingLogs) != 0)

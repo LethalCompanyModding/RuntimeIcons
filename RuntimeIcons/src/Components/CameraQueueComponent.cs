@@ -52,7 +52,7 @@ public class CameraQueueComponent : MonoBehaviour
         RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
         RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
     }
-    
+
     private void ComputeThread()
     {
         #if ENABLE_PROFILER_MARKERS
@@ -62,7 +62,7 @@ public class CameraQueueComponent : MonoBehaviour
         //this assignments are like this simply so we can rook at the values in UE
         HashSet<Item> readyItems = _computingMemory.ReadyItems; // = [];
         ConcurrentDictionary<Item, List<StageComponent.StageSettings>> alternativeRequests = _computingMemory.AlternativeRequests; // = [];
-        
+
         RuntimeIcons.Log.LogWarning("Starting compute thread!");
         StageComponent.StageSettings toCompute = null;
         while (true)
@@ -90,7 +90,7 @@ public class CameraQueueComponent : MonoBehaviour
                     readyItems.Remove(request.Item);
                     alternativeRequests.Remove(request.Item, out _);
                 }
-                
+
                 //check if we have to retry some item
                 while (_toRetryQueue.TryDequeue(out var item))
                 {
@@ -107,10 +107,10 @@ public class CameraQueueComponent : MonoBehaviour
                             break;
                         }
                     }
-                    
+
                     readyItems.Remove(item);
                 }
-                
+
                 //if we have nothing to retry, pull new requests
                 if (toCompute is null)
                 {
@@ -244,7 +244,7 @@ public class CameraQueueComponent : MonoBehaviour
                 var sprite = SpriteUtils.CreateSprite(texture);
                 sprite.name = sprite.texture.name =
                     $"{nameof(RuntimeIcons)}.{grabbableObject.itemProperties.itemName}";
-                
+
                 grabbableObject.itemProperties.itemIcon = sprite;
             }
             else
@@ -288,7 +288,7 @@ public class CameraQueueComponent : MonoBehaviour
 
             if (!candidateRequest.GrabbableObject || candidateRequest.GrabbableObject.isPocketed ||
                 candidateRequest.HasIcon) continue;
-            
+
             var renderSettings = new StageComponent.StageSettings(Stage, candidateRequest);
             _toComputeQueue.Enqueue(renderSettings);
             _computingHandle.Set();
@@ -296,7 +296,7 @@ public class CameraQueueComponent : MonoBehaviour
 
         StageComponent.StageSettings found = null;
         RenderingRequest request;
-        
+
         while (_readyQueue.TryDequeue(out var stageSettings))
         {
             request = stageSettings.TargetRequest;
@@ -312,7 +312,7 @@ public class CameraQueueComponent : MonoBehaviour
                 _computingHandle.Set();
             }
         }
-        
+
         if (found is null)
         {
             StageCamera.enabled = false;
@@ -320,7 +320,7 @@ public class CameraQueueComponent : MonoBehaviour
         }
 
         request = found.TargetRequest;
-        
+
         RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,$"{request.ItemKey} is the next render");
 
         // Extract the image into a new texture without mipmaps
@@ -343,8 +343,8 @@ public class CameraQueueComponent : MonoBehaviour
         StageCamera.transform.localRotation = found.CameraRotation;
 
         StageCamera.enabled = true;
-        
-        
+
+
     }
 
     private void Update()
@@ -386,7 +386,7 @@ public class CameraQueueComponent : MonoBehaviour
             _computingHandle.Set();
             return;
         }
-        
+
         try
         {
             //mark the item as `Rendered` ( LoadingSprite is considered invalid icon while LoadingSprite2 is considered a valid icon )
@@ -491,7 +491,7 @@ public class CameraQueueComponent : MonoBehaviour
             }
         }
     }
-    
+
     internal readonly struct RenderingRequest
     {
         internal RenderingRequest(GrabbableObject grabbableObject, Sprite errorSprite)
@@ -509,7 +509,7 @@ public class CameraQueueComponent : MonoBehaviour
         }
 
         internal readonly GrabbableObject GrabbableObject;
-        
+
         internal readonly Item Item;
 
         internal readonly Sprite ErrorSprite;
@@ -584,7 +584,7 @@ public class CameraQueueComponent : MonoBehaviour
 
         internal readonly int ComputeID = computeID;
     }
-    
+
     //this exists simply so we can rook at the values in UE
     public struct ThreadMemory
     {
@@ -594,7 +594,7 @@ public class CameraQueueComponent : MonoBehaviour
 
         internal readonly HashSet<Item> ReadyItems = [];
         internal readonly ConcurrentDictionary<Item, List<StageComponent.StageSettings>> AlternativeRequests = [];
-        
+
     }
 
 }
