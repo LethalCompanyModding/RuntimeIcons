@@ -10,6 +10,7 @@ using RuntimeIcons.Dotnet.Backports;
 using RuntimeIcons.Patches;
 using RuntimeIcons.Utils;
 #if ENABLE_PROFILER_MARKERS
+    using UnityEngine.Profiling;
     using Unity.Profiling;
 #endif
 using UnityEngine;
@@ -43,6 +44,7 @@ public class CameraQueueComponent : MonoBehaviour
     {
         _computingThread = new Thread(ComputeThread)
         {
+            Name = nameof(ComputeThread),
             IsBackground = true
         };
         _computingThread.Start();
@@ -53,6 +55,10 @@ public class CameraQueueComponent : MonoBehaviour
     
     private void ComputeThread()
     {
+        #if ENABLE_PROFILER_MARKERS
+            Profiler.BeginThreadProfiling(nameof(RuntimeIcons), nameof(ComputeThread));
+        #endif
+
         //this assignments are like this simply so we can rook at the values in UE
         HashSet<Item> readyItems = _computingMemory.ReadyItems; // = [];
         ConcurrentDictionary<Item, List<StageComponent.StageSettings>> alternativeRequests = _computingMemory.AlternativeRequests; // = [];
