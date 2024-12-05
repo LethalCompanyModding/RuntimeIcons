@@ -449,7 +449,7 @@ public class CameraQueueComponent : MonoBehaviour
 
                 var rawData = request.GetData<byte>();
 
-                var outputPath = CategorizeItemPatch.GetPathForItem(targetItem);
+                var outputPath = ItemCategory.GetPathForItem(targetItem);
                 var directory = Path.GetDirectoryName(outputPath) ?? "";
                 var filename = Path.GetFileName(outputPath);
 
@@ -500,7 +500,7 @@ public class CameraQueueComponent : MonoBehaviour
             Item = GrabbableObject.itemProperties;
             ErrorSprite = errorSprite;
 
-            ItemKey = CategorizeItemPatch.GetPathForItem(grabbableObject.itemProperties)
+            ItemKey = ItemCategory.GetPathForItem(grabbableObject.itemProperties)
                 .Replace(Path.DirectorySeparatorChar, '/');
 
             RuntimeIcons.OverrideMap.TryGetValue(ItemKey, out var overrideHolder);
