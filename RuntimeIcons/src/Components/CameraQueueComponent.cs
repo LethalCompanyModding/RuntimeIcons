@@ -25,7 +25,7 @@ public class CameraQueueComponent : MonoBehaviour
 
     private readonly ConcurrentQueue<StageComponent.StageSettings> _toComputeQueue = new();
     private readonly ConcurrentQueue<StageComponent.StageSettings> _readyQueue = new();
-    private readonly ConcurrentQueue<Item> _doneQueue = new();
+    private readonly ConcurrentQueue<(RenderingRequest request, float opaqueRatio)> _doneQueue = new();
     private readonly ConcurrentQueue<Item> _toRetryQueue = new();
 
     private Thread _computingThread;
@@ -78,10 +78,17 @@ public class CameraQueueComponent : MonoBehaviour
                 }
 
                 //forget completed items
-                while (_doneQueue.TryDequeue(out var item))
+                while (_doneQueue.TryDequeue(out var itemAndResult))
                 {
-                    readyItems.Remove(item);
-                    alternativeRequests.Remove(item, out _);
+                    var request = itemAndResult.request;
+
+                    if (itemAndResult.opaqueRatio < PluginConfig.TransparencyRatio)
+                        RuntimeIcons.Log.LogInfo($"{request.ItemKey} now has a new icon");
+                    else
+                        RuntimeIcons.Log.LogError($"{request.ItemKey} Generated {itemAndResult.opaqueRatio * 100:.#}% Empty Sprite!");
+
+                    readyItems.Remove(request.Item);
+                    alternativeRequests.Remove(request.Item, out _);
                 }
                 
                 //check if we have to retry some item
@@ -217,10 +224,6 @@ public class CameraQueueComponent : MonoBehaviour
 
         if (!UnpremultiplyAndCountTransparent.TryGetTransparentCount(render.ComputeID, out var transparentCount))
             return false;
-        
-        //notify thread this item is completed!
-        _doneQueue.Enqueue(render.Request.Item);
-        _computingHandle.Set();
 
         var texture = render.Texture;
 
@@ -232,6 +235,10 @@ public class CameraQueueComponent : MonoBehaviour
 
         try
         {
+            //notify thread this item is completed!
+            _doneQueue.Enqueue((render.Request, ratio));
+            _computingHandle.Set();
+
             if (ratio < PluginConfig.TransparencyRatio)
             {
                 var sprite = SpriteUtils.CreateSprite(texture);
@@ -239,12 +246,9 @@ public class CameraQueueComponent : MonoBehaviour
                     $"{nameof(RuntimeIcons)}.{grabbableObject.itemProperties.itemName}";
                 
                 grabbableObject.itemProperties.itemIcon = sprite;
-                
-                RuntimeIcons.Log.LogInfo($"{key} now has a new icon: {sprite.texture == texture}");
             }
             else
             {
-                RuntimeIcons.Log.LogError($"{key} Generated {ratio * 100}% Empty Sprite!");
                 grabbableObject.itemProperties.itemIcon = render.Request.ErrorSprite;
                 Destroy(texture);
             }
