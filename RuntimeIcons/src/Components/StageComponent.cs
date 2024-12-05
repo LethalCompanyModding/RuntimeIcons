@@ -412,9 +412,9 @@ public class StageComponent : MonoBehaviour
 
             var fovAngleX = Math.Max(-angleMinX, angleMaxX) * 2 * fovScale.y;
             var fovAngleY =
-                Camera.HorizontalToVerticalFieldOfView(Math.Max(-angleMinY, angleMaxY) * 2, stageSettings.CameraAspect) *
+                HorizontalToVerticalFOV(Math.Max(-angleMinY, angleMaxY) * 2, stageSettings.CameraAspect) *
                 fovScale.x;
-            stageSettings.CameraFOV = Math.Max(fovAngleX, fovAngleY);
+            stageSettings.CameraFOV = Math.Max(fovAngleX, fovAngleY) * Mathf.Rad2Deg;
         }
 
         return (stageSettings.CameraOffset, stageSettings.CameraFOV);
@@ -433,8 +433,13 @@ public class StageComponent : MonoBehaviour
             tangentMax = Math.Max(tangent, tangentMax);
         }
 
-        angleMin = Mathf.Atan(tangentMin) * Mathf.Rad2Deg;
-        angleMax = Mathf.Atan(tangentMax) * Mathf.Rad2Deg;
+        angleMin = Mathf.Atan(tangentMin);
+        angleMax = Mathf.Atan(tangentMax);
+    }
+
+    private float HorizontalToVerticalFOV(float horizontalFOV, float aspectRatio)
+    {
+        return 2f * Mathf.Atan(Mathf.Tan(horizontalFOV * 0.5f) / aspectRatio);
     }
 
     internal void ResetStage()
