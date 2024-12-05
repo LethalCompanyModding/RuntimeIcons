@@ -332,7 +332,7 @@ public class StageComponent : MonoBehaviour
         var bounds2 = stageSettings.StagedVertexes.GetBounds()!.Value;
 
         stageSettings.Position -= bounds2.center;
-        
+
         for (var i = 0; i < vertices.Length; i++)
             vertices[i] = -bounds2.center + vertices[i];
 
@@ -582,7 +582,7 @@ public class StageComponent : MonoBehaviour
         internal readonly bool CameraOrthographic;
         internal readonly float CameraAspect;
         internal readonly float CameraNearClip;
-        
+
         internal Quaternion CameraRotation = Quaternion.identity;
         internal float CameraFOV = 45;
 
@@ -591,9 +591,9 @@ public class StageComponent : MonoBehaviour
             CameraOrthographic = stage.Camera.orthographic;
             CameraAspect = stage.Camera.aspect;
             CameraNearClip = stage.Camera.nearClipPlane;
-            
+
             TargetRequest = renderingRequest;
-            
+
             if (OverrideHolder is { ItemRotation: not null })
             {
                 Rotation = Quaternion.Euler(OverrideHolder.ItemRotation.Value + new Vector3(0, 90f, 0));
