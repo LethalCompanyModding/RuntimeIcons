@@ -140,7 +140,7 @@ public class CameraQueueComponent : MonoBehaviour
 
                         RuntimeIcons.VerboseRenderingLog(LogLevel.Debug, $"Camera Offset: {cameraOffset}");
                         RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,
-                            $"Camera {(StageCamera.orthographic ? "orthographicSize" : "field of view")}: {cameraFov}");
+                            $"Camera {(toCompute.CameraOrthographic ? "orthographicSize" : "field of view")}: {cameraFov}");
 
                         _readyQueue.Enqueue(toCompute);
                     }
