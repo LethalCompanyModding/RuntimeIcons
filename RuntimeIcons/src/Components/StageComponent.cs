@@ -86,7 +86,7 @@ public class StageComponent : MonoBehaviour
         stageComponent.LightGo = lightsGo;
 
         //add Camera
-        var cameraGo = new GameObject("Camera")
+        var cameraGo = new GameObject($"{stageName}.Camera")
         {
             hideFlags = hideFlags,
             transform =
