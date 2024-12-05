@@ -201,8 +201,16 @@ public class CameraQueueComponent : MonoBehaviour
         return true;
     }
 
+    #if ENABLE_PROFILER_MARKERS
+        private static readonly ProfilerMarker PullLastRenderMarker = new(nameof(PullLastRender));
+    #endif
+
     private bool PullLastRender(RenderingResult render)
     {
+        #if ENABLE_PROFILER_MARKERS
+            using var markerAuto = PullLastRenderMarker.Auto();
+        #endif
+
         // Check if the fence has passed
         if (!render.FencePassed)
             return false;
