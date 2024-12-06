@@ -1,11 +1,10 @@
 # Runtime Icons
 
 ## 0.3.0
-- full rework of the rendering system:
-  - enqueue items instead of processing them immediately
-  - process items during normal Rendering loop
-  - compute transforms off the main thread
-  - use a compute-shader for all the graphic edits
+- full rework of the rendering system to render items asynchronously:
+  - enqueue items to compute their positions for rendering off the main thread
+  - render items during the normal game rendering loop to avoid overhead
+  - use a compute shader to process textures entirely on the GPU
 
 ## 0.2.0
 - new rendering system w/o custom-passes
