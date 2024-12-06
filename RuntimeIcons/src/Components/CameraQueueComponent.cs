@@ -23,15 +23,11 @@ public class CameraQueueComponent : MonoBehaviour
 {
     private readonly PriorityQueue<RenderingRequest, long> _renderingQueue = new (50);
 
-    private readonly ConcurrentQueue<StageComponent.StageSettings> _toComputeQueue = new();
-    private readonly ConcurrentQueue<StageComponent.StageSettings> _readyQueue = new();
-    private readonly ConcurrentQueue<(RenderingRequest request, float opaqueRatio)> _doneQueue = new();
-    private readonly ConcurrentQueue<Item> _toRetryQueue = new();
+
 
     private Thread _computingThread;
-    private readonly EventWaitHandle _computingHandle = new ManualResetEvent(false);
     //this exists simply so we can rook at the values in UE
-    private readonly ThreadMemory _computingMemory = new();
+    private ThreadMemory _computingMemory;
 
     private readonly List<RenderingResult> _renderedItems = [];
 
@@ -42,6 +38,7 @@ public class CameraQueueComponent : MonoBehaviour
 
     private void Start()
     {
+        _computingMemory = new ThreadMemory(this);
         _computingThread = new Thread(ComputeThread)
         {
             Name = nameof(ComputeThread),
@@ -59,9 +56,13 @@ public class CameraQueueComponent : MonoBehaviour
             Profiler.BeginThreadProfiling(nameof(RuntimeIcons), nameof(ComputeThread));
         #endif
 
-        //this assignments are like this simply so we can rook at the values in UE
-        HashSet<Item> readyItems = _computingMemory.ReadyItems; // = [];
-        ConcurrentDictionary<Item, List<StageComponent.StageSettings>> alternativeRequests = _computingMemory.AlternativeRequests; // = [];
+        var computeQueue = _computingMemory.ComputeQueue;
+        var doneQueue = _computingMemory.DoneQueue;
+        var readyQueue = _computingMemory.ReadyQueue;
+
+        var waitHandle = _computingMemory.WaitHandle;
+
+        var alternativeRequests = _computingMemory.AlternativeRequests; // = [];
 
         RuntimeIcons.Log.LogWarning("Starting compute thread!");
         StageComponent.StageSettings toCompute = null;
@@ -70,15 +71,15 @@ public class CameraQueueComponent : MonoBehaviour
             try
             {
                 //if we're not doing anything
-                if (_toComputeQueue.IsEmpty && _toRetryQueue.IsEmpty && _doneQueue.IsEmpty)
+                if (computeQueue.IsEmpty && doneQueue.IsEmpty)
                 {
                     //wait for something
-                    _computingHandle.Reset();
-                    _computingHandle.WaitOne();
+                    waitHandle.Reset();
+                    waitHandle.WaitOne();
                 }
 
                 //forget completed items
-                while (_doneQueue.TryDequeue(out var itemAndResult))
+                while (doneQueue.TryDequeue(out var itemAndResult))
                 {
                     var request = itemAndResult.request;
 
@@ -86,48 +87,11 @@ public class CameraQueueComponent : MonoBehaviour
                         RuntimeIcons.Log.LogInfo($"{request.ItemKey} now has a new icon");
                     else
                         RuntimeIcons.Log.LogError($"{request.ItemKey} Generated {itemAndResult.opaqueRatio * 100:.#}% Empty Sprite!");
-
-                    readyItems.Remove(request.Item);
-                    alternativeRequests.Remove(request.Item, out _);
                 }
 
-                //check if we have to retry some item
-                while (_toRetryQueue.TryDequeue(out var item))
+                if(computeQueue.TryDequeue(out var stageSettings))
                 {
-                    if (alternativeRequests.TryGetValue(item, out var list))
-                    {
-                        if (list.Count <= 0)
-                        {
-                            alternativeRequests.Remove(item, out _);
-                        }
-                        else
-                        {
-                            toCompute = list[0];
-                            list.RemoveAt(0);
-                            break;
-                        }
-                    }
-
-                    readyItems.Remove(item);
-                }
-
-                //if we have nothing to retry, pull new requests
-                if (toCompute is null)
-                {
-                    while (_toComputeQueue.TryDequeue(out var stageSettings))
-                    {
-                        var item = stageSettings.TargetRequest.Item;
-
-                        if (!readyItems.Add(item))
-                        {
-                            alternativeRequests.GetOrAdd(item, _ => []).Add(stageSettings);
-                        }
-                        else
-                        {
-                            toCompute = stageSettings;
-                            break;
-                        }
-                    }
+                    toCompute = stageSettings;
                 }
 
                 if (toCompute is not null)
@@ -155,7 +119,7 @@ public class CameraQueueComponent : MonoBehaviour
                         RuntimeIcons.VerboseRenderingLog(LogLevel.Debug,
                             $"Camera {(toCompute.CameraOrthographic ? "orthographicSize" : "field of view")}: {cameraFov}");
 
-                        _readyQueue.Enqueue(toCompute);
+                        readyQueue.Enqueue(toCompute);
                     }
                     catch (Exception ex)
                     {
@@ -236,8 +200,7 @@ public class CameraQueueComponent : MonoBehaviour
         try
         {
             //notify thread this item is completed!
-            _doneQueue.Enqueue((render.Request, ratio));
-            _computingHandle.Set();
+            _computingMemory.TryEnqueueDone(render.Request, ratio);
 
             if (ratio < PluginConfig.TransparencyRatio)
             {
@@ -289,15 +252,13 @@ public class CameraQueueComponent : MonoBehaviour
             if (!candidateRequest.GrabbableObject || candidateRequest.GrabbableObject.isPocketed ||
                 candidateRequest.HasIcon) continue;
 
-            var renderSettings = new StageComponent.StageSettings(Stage, candidateRequest);
-            _toComputeQueue.Enqueue(renderSettings);
-            _computingHandle.Set();
+            _computingMemory.TryEnqueueRequest(candidateRequest);
         }
 
         StageComponent.StageSettings found = null;
         RenderingRequest request;
 
-        while (_readyQueue.TryDequeue(out var stageSettings))
+        while (_computingMemory.TryDequeueReady(out var stageSettings))
         {
             request = stageSettings.TargetRequest;
             if (request.GrabbableObject && !request.GrabbableObject.isPocketed && !request.HasIcon)
@@ -308,8 +269,7 @@ public class CameraQueueComponent : MonoBehaviour
             else
             {
                 //notify thread to retry another item of this type
-                _toRetryQueue.Enqueue(request.Item);
-                _computingHandle.Set();
+                _computingMemory.TryEnqueueRetry(request.Item);
             }
         }
 
@@ -344,7 +304,6 @@ public class CameraQueueComponent : MonoBehaviour
 
         StageCamera.enabled = true;
 
-
     }
 
     private void Update()
@@ -355,7 +314,6 @@ public class CameraQueueComponent : MonoBehaviour
             if (PullLastRender(itemToApply))
                 _renderedItems.RemoveAt(0);
         }
-
 
         PrepareNextRender();
     }
@@ -382,8 +340,7 @@ public class CameraQueueComponent : MonoBehaviour
             //skip this frame
             _nextRender = null;
             //notify thread to retry this item type
-            _toRetryQueue.Enqueue(settings.TargetRequest.Item);
-            _computingHandle.Set();
+                _computingMemory.TryEnqueueRetry(settings.TargetRequest.Item);
             return;
         }
 
@@ -585,16 +542,87 @@ public class CameraQueueComponent : MonoBehaviour
         internal readonly int ComputeID = computeID;
     }
 
+    #if ENABLE_PROFILER_MARKERS
+        private static readonly ProfilerMarker TryEnqueueRequestMarker = new(nameof(ThreadMemory.TryEnqueueRequest));
+        private static readonly ProfilerMarker TryEnqueueRetryMarker   = new(nameof(ThreadMemory.TryEnqueueRetry));
+        private static readonly ProfilerMarker TryEnqueueDoneMarker    = new(nameof(ThreadMemory.TryEnqueueDone));
+        private static readonly ProfilerMarker TryDequeueReadyMarker   = new(nameof(ThreadMemory.TryDequeueReady));
+    #endif
+
     //this exists simply so we can rook at the values in UE
-    public struct ThreadMemory
+    private readonly struct ThreadMemory(CameraQueueComponent self)
     {
-        public ThreadMemory()
+        internal readonly EventWaitHandle WaitHandle = new ManualResetEvent(false);
+
+        internal readonly ConcurrentQueue<StageComponent.StageSettings> ComputeQueue = new();
+        internal readonly ConcurrentQueue<StageComponent.StageSettings> ReadyQueue = new();
+        internal readonly ConcurrentQueue<(RenderingRequest request, float opaqueRatio)> DoneQueue = new();
+
+        internal readonly Dictionary<Item, List<RenderingRequest>> AlternativeRequests = [];
+        internal bool TryEnqueueRequest(RenderingRequest request)
         {
+            #if ENABLE_PROFILER_MARKERS
+                using var markerAuto = TryEnqueueRequestMarker.Auto();
+            #endif
+
+            var item = request.Item;
+
+            if (AlternativeRequests.TryGetValue(item, out var list))
+            {
+                list.Add(request);
+                return false;
+            }
+            else
+            {
+                AlternativeRequests[item] = [];
+                var renderSettings = new StageComponent.StageSettings(self.Stage, request);
+                ComputeQueue.Enqueue(renderSettings);
+                WaitHandle.Set();
+                return true;
+            }
         }
 
-        internal readonly HashSet<Item> ReadyItems = [];
-        internal readonly ConcurrentDictionary<Item, List<StageComponent.StageSettings>> AlternativeRequests = [];
+        internal bool TryEnqueueRetry(Item itemType)
+        {
+            #if ENABLE_PROFILER_MARKERS
+                using var markerAuto = TryEnqueueRetryMarker.Auto();
+            #endif
 
+            if (!AlternativeRequests.TryGetValue(itemType, out var list))
+                return false;
+
+            if (list.Count > 0)
+            {
+                var request = list[0];
+                list.RemoveAt(0);
+                var renderSettings = new StageComponent.StageSettings(self.Stage, request);
+                ComputeQueue.Enqueue(renderSettings);
+                WaitHandle.Set();
+                return true;
+            }
+
+            AlternativeRequests.Remove(itemType, out _);
+            return false;
+        }
+
+        internal bool TryEnqueueDone(RenderingRequest request, float opaqueRatio)
+        {
+            #if ENABLE_PROFILER_MARKERS
+                using var markerAuto = TryEnqueueDoneMarker.Auto();
+            #endif
+
+            AlternativeRequests.Remove(request.Item);
+            DoneQueue.Enqueue((request, opaqueRatio));
+            WaitHandle.Set();
+            return true;
+        }
+        internal bool TryDequeueReady(out StageComponent.StageSettings settings)
+        {
+            #if ENABLE_PROFILER_MARKERS
+                using var markerAuto = TryDequeueReadyMarker.Auto();
+            #endif
+            return ReadyQueue.TryDequeue(out settings);
+        }
     }
 
 }
