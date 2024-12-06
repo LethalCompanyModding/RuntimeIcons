@@ -189,6 +189,13 @@ public class StageComponent : MonoBehaviour
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
 
+        if (stageSettings.State != StageSettingsState.Vertices)
+        {
+            RuntimeIcons.VerboseRenderingLog(LogLevel.Warning,
+                $"wrong state for the settings object: expected {nameof(StageSettingsState.Centered)} but got {stageSettings.State}. SKIPPING");
+            return (Vector3.zero, Quaternion.identity);
+        }
+
         var bounds = stageSettings.StagedVertexes.GetBounds();
         if (bounds is null)
             throw new InvalidOperationException("This object has no Renders!");
@@ -198,6 +205,8 @@ public class StageComponent : MonoBehaviour
         var vertices = stageSettings.StagedVertexes;
         for (var i = 0; i < vertices.Length; i++)
             vertices[i] = stageSettings.Position + vertices[i];
+
+        stageSettings.State = StageSettingsState.Centered;
 
         return (stageSettings.Position, stageSettings.Rotation);
     }
@@ -214,6 +223,13 @@ public class StageComponent : MonoBehaviour
 
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
+        
+        if (stageSettings.State != StageSettingsState.Centered)
+        {
+            RuntimeIcons.VerboseRenderingLog(LogLevel.Warning,
+                $"wrong state for the settings object: expected {nameof(StageSettingsState.Centered)} but got {stageSettings.State}. SKIPPING");
+            return (Vector3.zero, Quaternion.identity);
+        }
 
         var overrideHolder = stageSettings.OverrideHolder;
         var targetObject = stageSettings.TargetObject;
@@ -335,6 +351,8 @@ public class StageComponent : MonoBehaviour
 
         for (var i = 0; i < vertices.Length; i++)
             vertices[i] -= bounds2.center;
+        
+        stageSettings.State = StageSettingsState.Rotated;
 
         return (-bounds2.center, targetRotation);
     }
@@ -353,6 +371,13 @@ public class StageComponent : MonoBehaviour
 
         if (stageSettings == null)
             throw new ArgumentNullException(nameof(stageSettings));
+        
+        if (stageSettings.State != StageSettingsState.Rotated)
+        {
+            RuntimeIcons.VerboseRenderingLog(LogLevel.Warning,
+                $"wrong state for the settings object: expected {nameof(StageSettingsState.Centered)} but got {stageSettings.State}. SKIPPING");
+            return (Vector3.zero, 0);
+        }
 
         var vertices = stageSettings.StagedVertexes;
         if (vertices.Length == 0)
@@ -416,7 +441,9 @@ public class StageComponent : MonoBehaviour
                 fovScale.x;
             stageSettings.CameraFOV = Math.Max(fovAngleX, fovAngleY) * Mathf.Rad2Deg;
         }
-
+        
+        stageSettings.State = StageSettingsState.CameraValues;
+        
         return (stageSettings.CameraOffset, stageSettings.CameraFOV);
     }
 
@@ -567,6 +594,8 @@ public class StageComponent : MonoBehaviour
 
     internal class StageSettings
     {
+        internal StageSettingsState State = StageSettingsState.None;
+
         internal CameraQueueComponent.RenderingRequest TargetRequest;
 
         internal readonly Vector3[] StagedVertexes;
@@ -616,6 +645,16 @@ public class StageComponent : MonoBehaviour
             };
 
             StagedVertexes = TargetTransform.gameObject.GetVertexes(executionOptions);
+            State = StageSettingsState.Vertices;
         }
+    }
+    
+    public enum StageSettingsState
+    {
+        None,
+        Vertices,
+        Centered,
+        Rotated,
+        CameraValues
     }
 }
