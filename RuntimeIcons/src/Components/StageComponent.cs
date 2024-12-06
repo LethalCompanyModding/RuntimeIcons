@@ -329,12 +329,12 @@ public class StageComponent : MonoBehaviour
             vertices[i] = targetRotation * vertices[i];
 
         //re-center memory and vertices
-        var bounds2 = stageSettings.StagedVertexes.GetBounds()!.Value;
+        var bounds2 = vertices.GetBounds()!.Value;
 
         stageSettings.Position -= bounds2.center;
 
         for (var i = 0; i < vertices.Length; i++)
-            vertices[i] = -bounds2.center + vertices[i];
+            vertices[i] -= bounds2.center;
 
         return (-bounds2.center, targetRotation);
     }
@@ -366,6 +366,9 @@ public class StageComponent : MonoBehaviour
         var distanceToCamera = Math.Max(stageSettings.CameraNearClip + bounds.Value.size.z, 3f);
         stageSettings.CameraOffset = -bounds.Value.center + Vector3.forward * distanceToCamera;
 
+        for (var i = 0; i < vertices.Length; i++)
+            vertices[i] += stageSettings.CameraOffset;
+        
         // Calculate the camera size to fit the object being displayed
         var marginFraction = MarginPixels / _resolution;
         var fovScale = Vector2.one / (Vector2.one - marginFraction);
@@ -379,9 +382,6 @@ public class StageComponent : MonoBehaviour
         }
         else
         {
-            for (var i = 0; i < vertices.Length; i++)
-                vertices[i] += stageSettings.CameraOffset;
-
             Quaternion rotation = Quaternion.identity;
 
             Vector3 forward, right, down;
