@@ -8,7 +8,7 @@ namespace RuntimeIcons.Utils;
 public class ItemCategory
 {
     internal static Item[] VanillaItems;
-    internal static readonly Dictionary<Item, Tuple<string,string>> ItemModMap = [];
+    internal static readonly Dictionary<Item, (string api, string modname)> ItemModMap = [];
 
     public static string GetPathForItem(Item item)
     {
@@ -17,24 +17,24 @@ public class ItemCategory
         return GetPathForTag(modTag, item);
     }
 
-    public static Tuple<string, string> GetTagForItem(Item item)
+    public static (string api, string modname) GetTagForItem(Item item)
     {
         if (!ItemModMap.TryGetValue(item, out var modTag))
-            modTag = new Tuple<string, string>("Unknown", "");
+            modTag = ("Unknown", "");
         return modTag;
     }
 
-    public static string GetPathForTag(Tuple<string, string> modTag, Item item)
+    public static string GetPathForTag((string api, string modname) modTag, Item item)
     {
         var cleanName = string.Join("_",
                 item.itemName.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries))
             .TrimEnd('.');
 
         var cleanMod = string.Join("_",
-                modTag.Item2.Split(Path.GetInvalidPathChars(), StringSplitOptions.RemoveEmptyEntries))
+                modTag.modname.Split(Path.GetInvalidPathChars(), StringSplitOptions.RemoveEmptyEntries))
             .TrimEnd('.');
 
-        var path = Path.Combine(modTag.Item1, cleanMod, cleanName);
+        var path = Path.Combine(modTag.api, cleanMod, cleanName);
 
         return path;
     }
