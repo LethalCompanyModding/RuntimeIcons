@@ -655,6 +655,7 @@ public class StageComponent : MonoBehaviour
         Vertices,
         Centered,
         Rotated,
-        CameraValues
+        CameraValues,
+        Failed
     }
 }

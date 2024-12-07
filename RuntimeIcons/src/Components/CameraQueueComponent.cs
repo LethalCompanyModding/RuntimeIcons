@@ -62,8 +62,6 @@ public class CameraQueueComponent : MonoBehaviour
 
         var waitHandle = _computingMemory.WaitHandle;
 
-        var alternativeRequests = _computingMemory.AlternativeRequests; // = [];
-
         RuntimeIcons.Log.LogWarning("Starting compute thread!");
         StageComponent.StageSettings toCompute = null;
         while (true)
@@ -134,6 +132,12 @@ public class CameraQueueComponent : MonoBehaviour
             }
             catch (Exception ex)
             {
+                if (toCompute is not null)
+                {
+                    toCompute.State = StageComponent.StageSettingsState.Failed;
+                    readyQueue.Enqueue(toCompute);
+                }
+
                 RuntimeIcons.Log.LogError($"Something went wrong computing stageSettings\n{ex}");
             }
             Thread.Yield();
@@ -261,16 +265,19 @@ public class CameraQueueComponent : MonoBehaviour
         while (_computingMemory.TryDequeueReady(out var stageSettings))
         {
             request = stageSettings.TargetRequest;
-            if (request.GrabbableObject && !request.GrabbableObject.isPocketed && !request.HasIcon)
+
+            if (stageSettings.State == StageComponent.StageSettingsState.Failed ||
+                !request.GrabbableObject ||
+                request.GrabbableObject.isPocketed ||
+                request.HasIcon)
             {
-                found = stageSettings;
-                break;
-            }
-            else
-            {
-                //notify thread to retry another item of this type
+                //retry another item of this type
                 _computingMemory.TryEnqueueRetry(request.Item);
+                continue;
             }
+
+            found = stageSettings;
+            break;
         }
 
         if (found is null)
@@ -576,6 +583,9 @@ public class CameraQueueComponent : MonoBehaviour
             {
                 AlternativeRequests[item] = [];
                 var renderSettings = new StageComponent.StageSettings(self.Stage, request);
+                if (renderSettings.StagedVertexes.Length == 0)
+                    return false;
+
                 ComputeQueue.Enqueue(renderSettings);
                 WaitHandle.Set();
                 return true;
@@ -596,6 +606,9 @@ public class CameraQueueComponent : MonoBehaviour
                 var request = list[0];
                 list.RemoveAt(0);
                 var renderSettings = new StageComponent.StageSettings(self.Stage, request);
+                if (renderSettings.StagedVertexes.Length == 0)
+                    return false;
+
                 ComputeQueue.Enqueue(renderSettings);
                 WaitHandle.Set();
                 return true;
