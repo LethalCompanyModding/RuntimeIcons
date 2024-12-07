@@ -22,7 +22,7 @@ public class StartOfRoundPatch
 
         ItemCategory.VanillaItems ??= __instance.allItemsList.itemsList.ToArray();
 
-        foreach (var itemType in ItemCategory.VanillaItems) ItemCategory.ItemModMap.TryAdd(itemType, new Tuple<string, string>("Vanilla", ""));
+        foreach (var itemType in ItemCategory.VanillaItems) ItemCategory.ItemModMap.TryAdd(itemType, ("Vanilla", ""));
 
         orig(__instance);
     }
@@ -39,7 +39,7 @@ public class StartOfRoundPatch
 
         foreach (var itemType in __instance.allItemsList.itemsList)
         {
-            ItemCategory.ItemModMap.TryAdd(itemType, new Tuple<string, string>("Unknown", ""));
+            ItemCategory.ItemModMap.TryAdd(itemType, ("Unknown", ""));
         }
     }
 }
