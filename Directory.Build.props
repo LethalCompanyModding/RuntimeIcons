@@ -62,7 +62,7 @@
     <Target Name="Upload" AfterTargets="AfterBuild" Condition="'$(Upload)'=='TRUE' Or '$(Upload)'=='Dry'">
         <PropertyGroup>
             <DistributionDir>$(SolutionDir)\artifacts\tspublish\dist</DistributionDir>
-            <PluginsDir>$(DistributionDir)\plugins</PluginsDir>
+            <PluginsDir>$(DistributionDir)\BepInEx\plugins</PluginsDir>
         </PropertyGroup>
 
         <Message Importance="High" Text="Publishing" />
