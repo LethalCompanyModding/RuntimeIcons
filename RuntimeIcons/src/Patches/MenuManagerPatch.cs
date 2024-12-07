@@ -11,7 +11,8 @@ namespace RuntimeIcons.Patches;
 [HarmonyPatch(typeof(MenuManager))]
 internal static class MenuManagerPatch
 {
-    
+    private static bool _runOnce;
+
     #if ENABLE_PROFILER_MARKERS
         private static readonly ProfilerMarker SearchItemsMarker = new("SearchItems");
         private static readonly ProfilerMarker CacheVertexesMarker = new("CacheVertexes");
@@ -25,28 +26,28 @@ internal static class MenuManagerPatch
             using var markerAuto = SearchItemsMarker.Auto();
         #endif
         
+        if (_runOnce)
+            return;
+        _runOnce = true;
+
         try
         {
             //cache vertexes for all known items
-            var items = Resources.FindObjectsOfTypeAll<Item>();
+            var items = Resources.FindObjectsOfTypeAll<GrabbableObject>();
 
             RuntimeIcons.Log.LogWarning($"Caching vertexes for {items.Length} items!");
             foreach (var item in items)
             {
-                var prefab = item.spawnPrefab;
+                #if ENABLE_PROFILER_MARKERS
+                    using var markerAuto2 = CacheVertexesMarker.Auto();
+                #endif
 
-                if (prefab)
+                item.transform.CacheVertexes(new ExecutionOptions()
                 {
-                    #if ENABLE_PROFILER_MARKERS
-                        using var markerAuto2 = CacheVertexesMarker.Auto();
-                    #endif
-                    prefab.transform.CacheVertexes(new ExecutionOptions()
-                    {
-                        CullingMask = RuntimeIcons.RenderingStage.CullingMask,
-                        LogHandler = RuntimeIcons.VerboseMeshLog,
-                        VertexCache = RuntimeIcons.RenderingStage.VertexCache
-                    });
-                }
+                    CullingMask = RuntimeIcons.RenderingStage.CullingMask,
+                    LogHandler = RuntimeIcons.VerboseMeshLog,
+                    VertexCache = RuntimeIcons.RenderingStage.VertexCache
+                });
             }
         }
         catch (Exception ex)
