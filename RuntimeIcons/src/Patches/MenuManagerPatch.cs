@@ -35,7 +35,7 @@ internal static class MenuManagerPatch
             //cache vertexes for all known items
             var items = Resources.FindObjectsOfTypeAll<GrabbableObject>();
 
-            RuntimeIcons.Log.LogWarning($"Caching vertexes for {items.Length} items!");
+            RuntimeIcons.Log.LogInfo($"Caching vertexes for {items.Length} items!");
             foreach (var item in items)
             {
                 #if ENABLE_PROFILER_MARKERS
