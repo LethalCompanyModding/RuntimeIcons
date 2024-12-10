@@ -454,10 +454,11 @@ public class RuntimeIcons : BaseUnityPlugin
                 try
                 {
                     var array = (List<float>)JsonConvert.DeserializeObject(token.ToString(), typeof(List<float>));
-                    if (array.Count == 3) holder.ItemRotation = new Vector3(array[0], array[1], array[2]);
+                    if (array is { Count: 3 }) holder.ItemRotation = new Vector3(array[0], array[1], array[2]);
                 }
                 catch
                 {
+                    // ignored
                 }
 
             if (value.TryGetValue("stage_rotation", out token) &&
@@ -465,10 +466,11 @@ public class RuntimeIcons : BaseUnityPlugin
                 try
                 {
                     var array = (List<float>)JsonConvert.DeserializeObject(token.ToString(), typeof(List<float>));
-                    if (array.Count == 3) holder.StageRotation = new Vector3(array[0], array[1], array[2]);
+                    if (array is { Count: 3 }) holder.StageRotation = new Vector3(array[0], array[1], array[2]);
                 }
                 catch
                 {
+                    // ignored
                 }
 
             if (value.TryGetValue("icon_path", out token) &&
