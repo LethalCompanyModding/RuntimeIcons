@@ -70,7 +70,7 @@
 
         <ItemGroup>
             <OutputFiles Include="$(OutDir)\**" Exclude="**\*.deps.json" />
-            <OutputFiles Include="$(ProjectDir)\UnityAssets\AssetBundles\StandaloneWindows\runtimeicons.unity3d" />
+            <OutputFiles Include="$(SolutionDir)\UnityAssets\AssetBundles\StandaloneWindows\runtimeicons.unity3d" />
         </ItemGroup>
         <Copy
             SourceFiles="@(OutputFiles)"
