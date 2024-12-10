@@ -23,7 +23,7 @@ public static class LethalLibProxy
     [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
     public static void GetModdedItems([NotNull] in Dictionary<Item, (string api, string modname)> items)
     {
-        RuntimeIcons.Log.LogWarning("LethalLib found, reading Items.scrapItems");
+        RuntimeIcons.Log.LogInfo("LethalLib found, reading Items.scrapItems");
         foreach (var scrapItem in Items.scrapItems) items.TryAdd(scrapItem.item, ("LethalLib", scrapItem.modName));
         foreach (var scrapItem in Items.plainItems) items.TryAdd(scrapItem.item, ("LethalLib", scrapItem.modName));
         foreach (var scrapItem in Items.shopItems)  items.TryAdd(scrapItem.item, ("LethalLib", scrapItem.modName));

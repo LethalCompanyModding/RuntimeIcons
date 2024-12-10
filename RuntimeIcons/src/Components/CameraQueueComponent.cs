@@ -62,7 +62,7 @@ public class CameraQueueComponent : MonoBehaviour
 
         var waitHandle = _computingMemory.WaitHandle;
 
-        RuntimeIcons.Log.LogWarning("Starting compute thread!");
+        RuntimeIcons.Log.LogInfo("Starting compute thread!");
         StageComponent.StageSettings toCompute = null;
         while (true)
         {
@@ -158,7 +158,7 @@ public class CameraQueueComponent : MonoBehaviour
         if (queueElement.HasIcon)
             return false;
 
-        RuntimeIcons.Log.LogWarning($"Computing {key} icon");
+        RuntimeIcons.Log.LogInfo($"Computing {key} icon");
 
         if (queueElement.OverrideHolder?.OverrideSprite)
         {
