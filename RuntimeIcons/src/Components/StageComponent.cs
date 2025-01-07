@@ -122,10 +122,26 @@ public class StageComponent : MonoBehaviour
             hdrpCam.renderingPathCustomFrameSettings.SetEnabled(setting, enabled);
         }
 
+        SetOverride(FrameSettingsField.AtmosphericScattering, false);
+        SetOverride(FrameSettingsField.Bloom, false);
+        SetOverride(FrameSettingsField.ChromaticAberration, false);
+        SetOverride(FrameSettingsField.ColorGrading, false);
         SetOverride(FrameSettingsField.CustomPass, false);
         SetOverride(FrameSettingsField.CustomPostProcess, false);
+        SetOverride(FrameSettingsField.DepthOfField, false);
+        SetOverride(FrameSettingsField.Distortion, false);
+        SetOverride(FrameSettingsField.FilmGrain, false);
+        SetOverride(FrameSettingsField.LensDistortion, false);
+        SetOverride(FrameSettingsField.MotionBlur, false);
+        SetOverride(FrameSettingsField.MotionVectors, false);
+        SetOverride(FrameSettingsField.PaniniProjection, false);
+        SetOverride(FrameSettingsField.PlanarProbe, false);
+        SetOverride(FrameSettingsField.ReflectionProbe, false);
+        SetOverride(FrameSettingsField.ReprojectionForVolumetrics, false);
         SetOverride(FrameSettingsField.Tonemapping, false);
-        SetOverride(FrameSettingsField.ColorGrading, false);
+        SetOverride(FrameSettingsField.Vignette, false);
+        SetOverride(FrameSettingsField.VolumetricClouds, false);
+        SetOverride(FrameSettingsField.Volumetrics, false);
 
         var cameraQueue = cameraGo.AddComponent<CameraQueueComponent>();
         cameraQueue.Stage = stageComponent;
