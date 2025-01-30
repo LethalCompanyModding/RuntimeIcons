@@ -239,7 +239,7 @@ public class CameraQueueComponent : MonoBehaviour
     private void PrepareNextRender()
     {
         #if ENABLE_PROFILER_MARKERS
-            var markerAuto = PrepareNextRenderMarker.Auto();
+            using var markerAuto = PrepareNextRenderMarker.Auto();
         #endif
 
         _nextRender = null;
