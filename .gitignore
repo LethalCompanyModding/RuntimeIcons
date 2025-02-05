@@ -225,3 +225,6 @@ artifacts/**/*.zip
 
 # Common Rider Platform excludes
 /.idea
+
+# Exclude the Unity project from this ignore file
+!/UnityAssets/**
