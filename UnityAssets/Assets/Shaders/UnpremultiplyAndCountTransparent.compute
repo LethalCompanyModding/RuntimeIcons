@@ -9,9 +9,6 @@ void UnpremultiplyAndCountTransparent(uint3 id : SV_DispatchThreadID)
     float4 pixel = Texture[id.xy];
     if (pixel.a <= 0)
         InterlockedAdd(TransparentCount[0], 1);
-
-    if (pixel.a == 0)
-        Texture[id.xy] = pixel;
     else
         Texture[id.xy] = float4(pixel.rgb / pixel.a, pixel.a);
 }
