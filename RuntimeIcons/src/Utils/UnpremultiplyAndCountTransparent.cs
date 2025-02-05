@@ -8,15 +8,15 @@ internal static class UnpremultiplyAndCountTransparent
 {
     private static ComputeShader _unpremultiplyAndCountTransparentShader;
 
-    private static int _initializeShaderHandle;
-
     private static int _unpremultiplyAndCountTransparentHandle;
     private static uint _unpremultiplyAndCountTransparentThreadWidth;
     private static uint _unpremultiplyAndCountTransparentThreadHeight;
 
     private static ComputeBuffer _transparentCountBuffer;
-    private static Dictionary<int, uint> _transparentCounts = [];
+    private static uint[] _transparentCountZeroes = new uint[] { 0u };
+
     private static int _currentTransparentCountID = 0;
+    private static readonly Dictionary<int, uint> _transparentCounts = [];
 
     private static int _texturePropertyID;
 
@@ -30,14 +30,10 @@ internal static class UnpremultiplyAndCountTransparent
             return false;
         }
 
-        _initializeShaderHandle = _unpremultiplyAndCountTransparentShader.FindKernel("Initialize");
-
         _unpremultiplyAndCountTransparentHandle = _unpremultiplyAndCountTransparentShader.FindKernel("UnpremultiplyAndCountTransparent");
         _unpremultiplyAndCountTransparentShader.GetKernelThreadGroupSizes(_unpremultiplyAndCountTransparentHandle, out _unpremultiplyAndCountTransparentThreadWidth, out _unpremultiplyAndCountTransparentThreadHeight, out _);
 
         _transparentCountBuffer = new ComputeBuffer(1, sizeof(uint));
-
-        _unpremultiplyAndCountTransparentShader.SetBuffer(_initializeShaderHandle, "TransparentCount", _transparentCountBuffer);
         _unpremultiplyAndCountTransparentShader.SetBuffer(_unpremultiplyAndCountTransparentHandle, "TransparentCount", _transparentCountBuffer);
 
         _texturePropertyID = Shader.PropertyToID("Texture");
@@ -63,9 +59,8 @@ internal static class UnpremultiplyAndCountTransparent
             return -1;
         }
 
-        cmd.DispatchCompute(_unpremultiplyAndCountTransparentShader, _initializeShaderHandle, 1, 1, 1);
-
         cmd.SetComputeTextureParam(_unpremultiplyAndCountTransparentShader, _unpremultiplyAndCountTransparentHandle, _texturePropertyID, texture);
+        cmd.SetBufferData(_transparentCountBuffer, _transparentCountZeroes);
         cmd.DispatchCompute(_unpremultiplyAndCountTransparentShader, _unpremultiplyAndCountTransparentHandle, threadGroupsX, threadGroupsY, 1);
 
         var countID = _currentTransparentCountID++;
