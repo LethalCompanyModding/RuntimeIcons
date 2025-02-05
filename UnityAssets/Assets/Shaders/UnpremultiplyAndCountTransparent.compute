@@ -1,14 +1,7 @@
-#pragma kernel Initialize
 #pragma kernel UnpremultiplyAndCountTransparent
 
 RWTexture2D<float4> Texture;
 RWBuffer<uint> TransparentCount;
-
-[numthreads(1, 1, 1)]
-void Initialize(uint3 id : SV_DispatchThreadID)
-{
-    TransparentCount[0] = 0;
-}
 
 [numthreads(8, 8, 1)]
 void UnpremultiplyAndCountTransparent(uint3 id : SV_DispatchThreadID)
