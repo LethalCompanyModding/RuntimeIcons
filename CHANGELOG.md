@@ -1,5 +1,9 @@
 # Runtime Icons
 
+## 0.3.1
+- Disabled some camera post-processing to hide TZP effects, etc.
+- Fixed item icons failing to render sometimes on slow GPUs
+
 ## 0.3.0
 - Reworked the rendering system to render items asynchronously:
   - Items are enqueued to compute the positioning and framing off the main thread
