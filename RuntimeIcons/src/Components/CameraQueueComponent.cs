@@ -130,6 +130,11 @@ public class CameraQueueComponent : MonoBehaviour
                     }
                 }
             }
+            catch (Exception ex) when (ex is ThreadAbortException or ThreadInterruptedException)
+            {
+                RuntimeIcons.Log.LogDebug($"Compute thread is being aborted, exiting!");
+                return;
+            }
             catch (Exception ex)
             {
                 if (toCompute is not null)
