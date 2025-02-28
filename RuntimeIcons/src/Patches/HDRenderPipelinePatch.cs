@@ -24,6 +24,9 @@ internal static class HDRenderPipelinePatch
     [HarmonyPatch(nameof(HDRenderPipeline.Render), [typeof(ScriptableRenderContext), typeof(List<Camera>)])]
     private static IEnumerable<CodeInstruction> AddCameraRenderHook(IEnumerable<CodeInstruction> instructions)
     {
+        //   var renderRequestIndex = renderRequestIndices[j];
+        //   var renderRequest = renderRequests[renderRequestIndex];
+        // + HDRenderPipelinePatch.BeginCameraRenderingHook(renderRequest, renderContext);
         var matcher = new CodeMatcher(instructions)
             .MatchForward(true, [
                 new CodeMatch(insn => insn.IsLdloc()),
@@ -49,6 +52,9 @@ internal static class HDRenderPipelinePatch
             ]);
 
 #if ENABLE_PROFILER_MARKERS
+        //   var renderRequestIndex = renderRequestIndices[j];
+        //   var renderRequest = renderRequests[renderRequestIndex];
+        // + HDRenderPipelinePatch.CameraRenderingMarker.Begin(renderRequest.hdCamera);
         matcher
             .Insert([
                 new CodeInstruction(OpCodes.Ldsflda, typeof(HDRenderPipelinePatch).GetField(nameof(CameraRenderingMarker), BindingFlags.NonPublic | BindingFlags.Static)),
@@ -58,6 +64,14 @@ internal static class HDRenderPipelinePatch
                 new CodeInstruction(OpCodes.Call, typeof(ProfilerMarker).GetMethod(nameof(ProfilerMarker.Begin), [typeof(UnityEngine.Object)])),
             ]);
 
+        //   foreach (var (camera, xrPass) in xRLayout.GetActivePasses())
+        //   {
+        //     if (camera == null)
+        //       continue;
+        // +   HDRenderPipelinePatch.CameraCullingMarker.Begin(renderRequest.hdCamera);
+        //     ...
+        // +   HDRenderPipelinePatch.CameraCullingMarker.End();
+        //   }
         matcher
             .Start()
             .MatchForward(false, [
@@ -90,6 +104,8 @@ internal static class HDRenderPipelinePatch
                 new CodeInstruction(OpCodes.Call, typeof(ProfilerMarker).GetMethod(nameof(ProfilerMarker.End), [])),
             ]);
 
+        //   renderContext.Submit();
+        // + HDRenderPipelinePatch.CameraRenderingMarker.End();
         matcher
             .MatchForward(true, [
                 new CodeMatch(OpCodes.Call, typeof(ScriptableRenderContext).GetMethod(nameof(ScriptableRenderContext.Submit))),
