@@ -1,5 +1,8 @@
 # Runtime Icons
 
+## 0.3.2
+- Fixed lights on some moons disappearing based on camera angle after items have been rendered
+
 ## 0.3.1
 - Disabled some camera post-processing to hide TZP effects, etc.
 - Fixed item icons failing to render sometimes on slow GPUs
