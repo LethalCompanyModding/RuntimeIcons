@@ -683,7 +683,11 @@ public class CameraQueueComponent : MonoBehaviour
             _ambientLight = null;
 
             foreach (var light in _disabledLights)
+            {
                 light.enabled = true;
+                if (light.TryGetComponent(out HDAdditionalLightData lightData))
+                    lightData.UpdateBounds();
+            }
 
             _disabledLights.Clear();
             _localLights.Clear();
