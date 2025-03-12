@@ -165,10 +165,16 @@ public class StageComponent : MonoBehaviour
         };
     }
 
-    private void Awake()
+    private void OnEnable()
     {
         HDRenderPipelinePatch.beginCameraRendering += BeginCameraRendering;
         RenderPipelineManager.endCameraRendering += EndCameraRendering;
+    }
+
+    private void OnDisable()
+    {
+        HDRenderPipelinePatch.beginCameraRendering -= BeginCameraRendering;
+        RenderPipelineManager.endCameraRendering -= EndCameraRendering;
     }
 
     internal void SetStageFromSettings(StageSettings stageSettings)

@@ -46,8 +46,18 @@ public class CameraQueueComponent : MonoBehaviour
         };
         _computingThread.Start();
         StageCamera = Stage.Camera;
+    }
+
+    private void OnEnable()
+    {
         RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
         RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
+    }
+
+    private void OnDisable()
+    {
+        RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
+        RenderPipelineManager.endCameraRendering -= OnEndCameraRendering;
     }
 
     private void ComputeThread()
