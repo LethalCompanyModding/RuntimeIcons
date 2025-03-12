@@ -558,43 +558,46 @@ public class StageComponent : MonoBehaviour
 
     internal class IsolateStageLights : IDisposable
     {
-        private readonly HashSet<Light> _lightMemory;
-        private readonly Color _ambientLight;
+        private List<Light> _lightMemory;
+        private Color _ambientLight;
 
         public IsolateStageLights(params GameObject[] stageObjects)
         {
-            _lightMemory = UnityEngine.Pool.HashSetPool<Light>.Get();
+            _lightMemory = UnityEngine.Pool.ListPool<Light>.Get();
 
             _ambientLight = RenderSettings.ambientLight;
             RenderSettings.ambientLight = Color.black;
 
-            List<Light> localLights = [];
-            foreach (var gameObject in stageObjects)
-            {
-                var lights = gameObject.GetComponentsInChildren<Light>();
-                localLights.AddRange(lights);
-            }
+            var localLights = UnityEngine.Pool.ListPool<Light>.Get();
+            foreach (var stageObject in stageObjects)
+                localLights.AddRange(stageObject.GetComponentsInChildren<Light>());
 
-            var globalLights = FindObjectsOfType<Light>().Where(l => !localLights.Contains(l)).Where(l => l.enabled)
-                .ToArray();
-
-            foreach (var light in globalLights)
+            foreach (var light in FindObjectsByType<Light>(FindObjectsSortMode.None))
             {
-                light.enabled = false;
+                if (!light.enabled)
+                    continue;
+                if (localLights.Contains(light))
+                    continue;
                 _lightMemory.Add(light);
+                light.enabled = false;
             }
+
+            UnityEngine.Pool.ListPool<Light>.Release(localLights);
         }
 
         public void Dispose()
         {
+            if (_lightMemory == null)
+                return;
+
             RenderSettings.ambientLight = _ambientLight;
+            _ambientLight = Color.black;
 
             foreach (var light in _lightMemory)
-            {
                 light.enabled = true;
-            }
 
-            UnityEngine.Pool.HashSetPool<Light>.Release(_lightMemory);
+            ListPool<Light>.Release(_lightMemory);
+            _lightMemory = null;
         }
     }
 
