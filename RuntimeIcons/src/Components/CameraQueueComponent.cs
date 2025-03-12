@@ -341,7 +341,7 @@ public class CameraQueueComponent : MonoBehaviour
         PrepareNextRender();
     }
 
-    private IsolateStageLights _isolatorHolder;
+    private IsolateStageLights _isolator = new();
 
     private void OnBeginCameraRendering(ScriptableRenderContext context, Camera camera)
     {
@@ -378,7 +378,7 @@ public class CameraQueueComponent : MonoBehaviour
             // Set the item on the stage and isolate lighting.
             Stage.SetStageFromSettings(_nextRender.Value.Settings);
 
-            _isolatorHolder = new IsolateStageLights(settings.TargetObject.gameObject, Stage.LightGo);
+            _isolator.Begin([settings.TargetObject.gameObject, Stage.LightGo]);
             _isStaged = true;
         }
         catch (Exception ex)
@@ -463,13 +463,7 @@ public class CameraQueueComponent : MonoBehaviour
             Stage.ResetStage();
 
             //re-enable lights if we had an isolator active
-            if (_isolatorHolder != null)
-            {
-                var holder = _isolatorHolder;
-                // Remove the isolator before disposing in case an exception is encountered.
-                _isolatorHolder = null;
-                holder.Dispose();
-            }
+            _isolator.End();
         }
     }
 
@@ -655,48 +649,44 @@ public class CameraQueueComponent : MonoBehaviour
         }
     }
 
-    internal class IsolateStageLights : IDisposable
+    internal struct IsolateStageLights()
     {
-        private List<Light> _lightMemory;
-        private Color _ambientLight;
+        private List<Light> _disabledLights = [];
+        private List<Light> _localLights = [];
+        private Color? _ambientLight = null;
 
-        public IsolateStageLights(params GameObject[] stageObjects)
+        internal void Begin(GameObject[] stageObjects)
         {
-            _lightMemory = UnityEngine.Pool.ListPool<Light>.Get();
+            End();
 
             _ambientLight = RenderSettings.ambientLight;
             RenderSettings.ambientLight = Color.black;
 
-            var localLights = UnityEngine.Pool.ListPool<Light>.Get();
             foreach (var stageObject in stageObjects)
-                localLights.AddRange(stageObject.GetComponentsInChildren<Light>());
+                _localLights.AddRange(stageObject.GetComponentsInChildren<Light>());
 
             foreach (var light in FindObjectsByType<Light>(FindObjectsSortMode.None))
             {
                 if (!light.enabled)
                     continue;
-                if (localLights.Contains(light))
+                if (_localLights.Contains(light))
                     continue;
-                _lightMemory.Add(light);
+                _disabledLights.Add(light);
                 light.enabled = false;
             }
-
-            UnityEngine.Pool.ListPool<Light>.Release(localLights);
         }
 
-        public void Dispose()
+        internal void End()
         {
-            if (_lightMemory == null)
-                return;
+            if (_ambientLight.HasValue)
+                RenderSettings.ambientLight = _ambientLight.Value;
+            _ambientLight = null;
 
-            RenderSettings.ambientLight = _ambientLight;
-            _ambientLight = Color.black;
-
-            foreach (var light in _lightMemory)
+            foreach (var light in _disabledLights)
                 light.enabled = true;
 
-            ListPool<Light>.Release(_lightMemory);
-            _lightMemory = null;
+            _disabledLights.Clear();
+            _localLights.Clear();
         }
     }
 
