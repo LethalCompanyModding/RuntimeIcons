@@ -556,51 +556,6 @@ public class StageComponent : MonoBehaviour
         SetAlphaEnabled(false);
     }
 
-    internal class IsolateStageLights : IDisposable
-    {
-        private List<Light> _lightMemory;
-        private Color _ambientLight;
-
-        public IsolateStageLights(params GameObject[] stageObjects)
-        {
-            _lightMemory = UnityEngine.Pool.ListPool<Light>.Get();
-
-            _ambientLight = RenderSettings.ambientLight;
-            RenderSettings.ambientLight = Color.black;
-
-            var localLights = UnityEngine.Pool.ListPool<Light>.Get();
-            foreach (var stageObject in stageObjects)
-                localLights.AddRange(stageObject.GetComponentsInChildren<Light>());
-
-            foreach (var light in FindObjectsByType<Light>(FindObjectsSortMode.None))
-            {
-                if (!light.enabled)
-                    continue;
-                if (localLights.Contains(light))
-                    continue;
-                _lightMemory.Add(light);
-                light.enabled = false;
-            }
-
-            UnityEngine.Pool.ListPool<Light>.Release(localLights);
-        }
-
-        public void Dispose()
-        {
-            if (_lightMemory == null)
-                return;
-
-            RenderSettings.ambientLight = _ambientLight;
-            _ambientLight = Color.black;
-
-            foreach (var light in _lightMemory)
-                light.enabled = true;
-
-            ListPool<Light>.Release(_lightMemory);
-            _lightMemory = null;
-        }
-    }
-
     internal record struct TransformMemory
     {
         public readonly Transform Parent;
