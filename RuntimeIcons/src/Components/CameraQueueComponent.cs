@@ -465,6 +465,7 @@ public class CameraQueueComponent : MonoBehaviour
             if (_isolatorHolder != null)
             {
                 var holder = _isolatorHolder;
+                // Remove the isolator before disposing in case an exception is encountered.
                 _isolatorHolder = null;
                 holder.Dispose();
             }
