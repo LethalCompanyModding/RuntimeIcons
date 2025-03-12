@@ -82,7 +82,10 @@ public class RuntimeIcons : BaseUnityPlugin
             Log.LogInfo("Patching Methods");
 
             StartOfRoundPatch.Init();
-            Harmony.PatchAll();
+            Harmony.PatchAll(typeof(HDRenderPipelinePatch));
+            Harmony.PatchAll(typeof(MenuManagerPatch));
+            Harmony.PatchAll(typeof(StartOfRoundPatch));
+            Harmony.PatchAll(typeof(GrabbableObjectPatch));
 
             Log.LogInfo(NAME + " v" + VERSION + " Loaded!");
 
