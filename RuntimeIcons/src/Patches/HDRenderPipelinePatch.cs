@@ -1,4 +1,4 @@
-using HarmonyLib;
+﻿using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -14,6 +14,7 @@ namespace RuntimeIcons.Patches;
 internal static class HDRenderPipelinePatch
 {
     internal static Action<ScriptableRenderContext, Camera> beginCameraRendering;
+    internal static Action<ScriptableRenderContext, Camera> beforeRenderContextSubmit;
 
 #if ENABLE_PROFILER_MARKERS
     private static readonly ProfilerMarker CameraCullingMarker = new("Cull");
@@ -103,14 +104,35 @@ internal static class HDRenderPipelinePatch
                 new CodeInstruction(OpCodes.Ldsflda, typeof(HDRenderPipelinePatch).GetField(nameof(CameraCullingMarker), BindingFlags.NonPublic | BindingFlags.Static)),
                 new CodeInstruction(OpCodes.Call, typeof(ProfilerMarker).GetMethod(nameof(ProfilerMarker.End), [])),
             ]);
+#endif
 
+        // + HDRenderPipelinePatch.BeforeRenderContextSubmitHook(render)
+        //   renderContext.Submit();
+        matcher
+            .MatchForward(false, [
+                new CodeMatch(insn => insn.opcode == OpCodes.Ldarga || insn.opcode == OpCodes.Ldarga_S),
+                new CodeMatch(OpCodes.Call, typeof(ScriptableRenderContext).GetMethod(nameof(ScriptableRenderContext.Submit))),
+            ]);
+
+        if (matcher.IsInvalid)
+        {
+            RuntimeIcons.Log.LogError($"Failed to hook into HDRP before it submits its command buffer.");
+            RuntimeIcons.Log.LogError($"RuntimeIcons will not function correctly.");
+            return instructions;
+        }
+
+        matcher
+            .InsertAndAdvance([
+                new CodeInstruction(loadRenderRequest),
+                new CodeInstruction(OpCodes.Ldarg_1),
+                new CodeInstruction(OpCodes.Call, typeof(HDRenderPipelinePatch).GetMethod(nameof(BeforeRenderContextSubmitHook), BindingFlags.NonPublic | BindingFlags.Static, null, [typeof(HDRenderPipeline.RenderRequest), typeof(ScriptableRenderContext)], null)),
+            ]);
+
+#if ENABLE_PROFILER_MARKERS
         //   renderContext.Submit();
         // + HDRenderPipelinePatch.CameraRenderingMarker.End();
         matcher
-            .MatchForward(true, [
-                new CodeMatch(OpCodes.Call, typeof(ScriptableRenderContext).GetMethod(nameof(ScriptableRenderContext.Submit))),
-            ])
-            .Advance(1)
+            .Advance(2)
             .Insert([
                 new CodeInstruction(OpCodes.Ldsflda, typeof(HDRenderPipelinePatch).GetField(nameof(CameraRenderingMarker), BindingFlags.NonPublic | BindingFlags.Static)),
                 new CodeInstruction(OpCodes.Call, typeof(ProfilerMarker).GetMethod(nameof(ProfilerMarker.End), [])),
@@ -123,5 +145,10 @@ internal static class HDRenderPipelinePatch
     private static void BeginCameraRenderingHook(HDRenderPipeline.RenderRequest request, ScriptableRenderContext context)
     {
         beginCameraRendering?.Invoke(context, request.hdCamera.camera);
+    }
+
+    private static void BeforeRenderContextSubmitHook(HDRenderPipeline.RenderRequest request, ScriptableRenderContext context)
+    {
+        beforeRenderContextSubmit?.Invoke(context, request.hdCamera.camera);
     }
 }

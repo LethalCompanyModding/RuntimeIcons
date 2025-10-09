@@ -52,13 +52,13 @@ public class CameraQueueComponent : MonoBehaviour
     private void OnEnable()
     {
         RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
-        RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
+        HDRenderPipelinePatch.beforeRenderContextSubmit += OnBeforeRenderContextSubmit;
     }
 
     private void OnDisable()
     {
         RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
-        RenderPipelineManager.endCameraRendering -= OnEndCameraRendering;
+        HDRenderPipelinePatch.beforeRenderContextSubmit -= OnBeforeRenderContextSubmit;
     }
 
     private void ComputeThread()
@@ -388,11 +388,11 @@ public class CameraQueueComponent : MonoBehaviour
     }
 
     #if ENABLE_PROFILER_MARKERS
-        private static readonly ProfilerMarker OnEndCameraMarker = new(nameof(OnEndCameraRendering));
+        private static readonly ProfilerMarker OnEndCameraMarker = new(nameof(OnBeforeRenderContextSubmit));
         private static readonly ProfilerMarker DumpRenderMarker = new("Dump Icon Render");
     #endif
 
-    private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
+    private void OnBeforeRenderContextSubmit(ScriptableRenderContext context, Camera camera)
     {
         #if ENABLE_PROFILER_MARKERS
             using var markerAuto = OnEndCameraMarker.Auto();
