@@ -41,6 +41,6 @@ internal class CullFactoryCompatibility
     private static void DisableCullingForCameraImpl(Camera camera)
     {
         var cullingOptions = camera.gameObject.AddComponent<CameraCullingOptions>();
-        cullingOptions.disableCulling = true;
+        cullingOptions.DisableCulling = true;
     }
 }
