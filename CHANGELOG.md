@@ -1,5 +1,8 @@
 # Runtime Icons
 
+## 0.3.3
+- Updated to work with the updated HDRP in v73, while remaining compatible with v72
+
 ## 0.3.2
 - Fixed lights on some moons disappearing based on camera angle after items have been rendered
 
