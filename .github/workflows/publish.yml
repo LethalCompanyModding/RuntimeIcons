@@ -24,7 +24,6 @@ jobs:
           TCLI_AUTH_TOKEN: ${{ secrets.TCLI_AUTH_TOKEN }}
           PACKAGE_VERSION: ${{ github.ref_name }}
         run: |
-          dotnet nuget locals global-packages --clear
           dotnet restore --locked-mode
           dotnet tool restore
           dotnet build -c Release -p:Upload=true
