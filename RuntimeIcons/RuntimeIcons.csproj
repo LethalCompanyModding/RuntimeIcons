@@ -7,12 +7,12 @@
         <Configurations>Profiling;Release</Configurations>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Evaisa-LethalLib" Version="0.16.1" Private="False"/>
-        <PackageReference Include="IAmBatby-LethalLevelLoader" Version="1.3.10" Private="False"/>
-        <PackageReference Include="TeamBMX.LobbyCompatibility" Version="1.0.1" Private="False"/>
-        <PackageReference Include="AinaVT-LethalConfig" Version="1.4.3" Private="False"/>
-        <PackageReference Include="LethalCompanyModding-VertexLibrary" Version="1.1.0" Private="False"/>
-        <PackageReference Include="fumiko-CullFactory" Version="1.4.2" Private="False"/>
+        <PackageReference Include="Evaisa-LethalLib" Version="*" Private="False"/>
+        <PackageReference Include="IAmBatby-LethalLevelLoader" Version="*" Private="False"/>
+        <PackageReference Include="TeamBMX.LobbyCompatibility" Version="*" Private="False"/>
+        <PackageReference Include="AinaVT-LethalConfig" Version="*" Private="False"/>
+        <PackageReference Include="LethalCompanyModding-VertexLibrary" Version="*" Private="False"/>
+        <PackageReference Include="fumiko-CullFactory" Version="*" Private="False"/>
 
         <PackageReference Include="BepInEx.Core" Version="5.4.21" Private="False"/>
         <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.1" PrivateAssets="all" />
