@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -75,7 +75,7 @@ internal static class HDRenderPipelinePatch
         matcher
             .Start()
             .MatchForward(false, [
-                new CodeMatch(insn => (insn.opcode == OpCodes.Ldloc || insn.opcode == OpCodes.Ldloc_S) && ((LocalBuilder)insn.operand).LocalIndex == 16),
+                new CodeMatch(insn => (insn.opcode == OpCodes.Ldloc || insn.opcode == OpCodes.Ldloc_S) && ((LocalBuilder)insn.operand).LocalType == typeof(Camera)),
                 new CodeMatch(OpCodes.Ldnull),
                 new CodeMatch(OpCodes.Call, typeof(UnityEngine.Object).GetMethod("op_Equality")),
                 new CodeMatch(OpCodes.Brtrue),
