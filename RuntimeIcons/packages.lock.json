@@ -6,7 +6,7 @@
         "type": "Direct",
         "requested": "[*, )",
         "resolved": "1.4.6",
-        "contentHash": "8eb+ZrEQs4K1PTh0CyEWrfCfvXGvrjhLq3Ej4h1VpqeidUsrpKyV4nPG2G64Mjl9w91uy+dY0vB1w24yzoNRgA=="
+        "contentHash": "1Xxsa43VjNTPh4Bye70BicN2dFvHeuwBogru3ru4C5+VZ6a7RxTsvWKJSdm+tJDa44d8gzkmVRjhg6iR6CHeeA=="
       },
       "BepInEx.AssemblyPublicizer.MSBuild": {
         "type": "Direct",
@@ -39,20 +39,20 @@
       "fumiko-CullFactory": {
         "type": "Direct",
         "requested": "[*, )",
-        "resolved": "1.7.0",
-        "contentHash": "9C97DI9sM4lgXUrTceWX/gqGPCQ9K9K/FQIn5G2Bb+WmIgn6JDeETiYMBYuXPJa5HgjhhkGaUGWg69aZHITpkA=="
+        "resolved": "2.0.3",
+        "contentHash": "rw/K3cwDKh+Uk5Kt+MKSQm65K5mm2PSyiw2ZWJNOgQq+/67OEU4hNp7Ef7QTP9lINiUrfBfZaiVKSgXWyhqT7g=="
       },
       "IAmBatby-LethalLevelLoader": {
         "type": "Direct",
         "requested": "[*, )",
-        "resolved": "1.4.11",
-        "contentHash": "Sl9I3L7OVuiYma78LM5/1tsV13GRhxAHo9L9KEOMEcgqf0VDLTT0pC1vqKWVwY6ZykVshJQsHAwtaAudEU5x5g=="
+        "resolved": "1.6.5",
+        "contentHash": "hKGjPQyxzWYfjDBj1w4aOv7mEqHp7aLh2ZKjWuT7FgqqnsxsSIr8E7eMaqT5TmhK5FbP/5DNYEeJbdelZUuCvg=="
       },
       "LethalCompany.GameLibs.Steam": {
         "type": "Direct",
-        "requested": "[64.0.0-ngd.0, )",
-        "resolved": "64.0.0-ngd.0",
-        "contentHash": "bCk3jT8c3IVbH3W0HJ6Cc31xR5JXIvvxWQ2+a3F4YwHPvV0r+4DNHqTj7b1BgQvCdnuiHeDA+yTNsiYqb0ZFVQ==",
+        "requested": "[73.0.0-*, )",
+        "resolved": "73.0.0-ngd.0",
+        "contentHash": "iaHCHoJTFiTnAyAYIrEbjCJOOuhcJ42+KJnEbmCmf4UdkhjSwwio2bcdPCbchodB9kEp+3v3ATgkBwYn56/Gdw==",
         "dependencies": {
           "Newtonsoft.JSON": "13.0.3",
           "UnityEngine.Modules": "2022.3.9"
@@ -60,15 +60,21 @@
       },
       "LethalCompanyModding-VertexLibrary": {
         "type": "Direct",
-        "requested": "[1.0.0, )",
-        "resolved": "1.0.0",
-        "contentHash": "+q+InB4PElOpg/0wwd/MEnrTDWgQMwxsxiNvXiEz365HxRiL4Oj8Z045GFh3CBmP3hjbqx6d8eugdLjK+wUGrw=="
+        "requested": "[*, )",
+        "resolved": "1.1.0",
+        "contentHash": "arx9xKGWLf5/2tAi8MGTJV5Ecyhm5eu9nPhFKeA/YPSB9rM5GE5+d2T3u85BtcppKYR8C4b6h+jexiZoPPHxoA=="
       },
       "TeamBMX.LobbyCompatibility": {
         "type": "Direct",
         "requested": "[*, )",
         "resolved": "1.5.1",
         "contentHash": "U1taVjagI6Ma1v7EXLX9dJpJJGHBt8R2UIdOgPu/k87ZFc9qER19a4C1FPigM7qBdE6/pzXo8ovwuPrRRFb51g=="
+      },
+      "TeamXiaolan-DawnLib": {
+        "type": "Direct",
+        "requested": "[*, )",
+        "resolved": "0.7.7",
+        "contentHash": "LUQcaRqWsXyq0jIDMoE9gKMwCbFVwrBNS3grwoVzXeK3YbDLRrN+WaCYJtquW+okpNzQeGX8hQv3zu0IYkzL8g=="
       },
       "BepInEx.BaseLib": {
         "type": "Transitive",

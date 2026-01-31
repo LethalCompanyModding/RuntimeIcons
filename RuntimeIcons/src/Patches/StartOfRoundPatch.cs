@@ -19,10 +19,11 @@ public class StartOfRoundPatch
     private static void PrepareItemCache(Action<StartOfRound> orig, StartOfRound __instance)
     {
         ItemCategory.ItemModMap.Clear();
-
-        ItemCategory.VanillaItems ??= __instance.allItemsList.itemsList.ToArray();
-
-        foreach (var itemType in ItemCategory.VanillaItems) ItemCategory.ItemModMap.TryAdd(itemType, ("Vanilla", ""));
+        
+        //delay registering Vanilla items if DawnLib is installed
+        if (!DawnLibProxy.Enabled)
+            foreach (var itemType in __instance.allItemsList.itemsList) 
+                ItemCategory.ItemModMap.TryAdd(itemType, ("Vanilla", ""));
 
         orig(__instance);
     }
@@ -37,9 +38,7 @@ public class StartOfRoundPatch
         if (LethalLevelLoaderProxy.Enabled)
             LethalLevelLoaderProxy.GetModdedItems(in ItemCategory.ItemModMap);
 
-        foreach (var itemType in __instance.allItemsList.itemsList)
-        {
-            ItemCategory.ItemModMap.TryAdd(itemType, ("Unknown", ""));
-        }
+        if (DawnLibProxy.Enabled)
+            DawnLibProxy.GetModdedItems(in ItemCategory.ItemModMap);
     }
 }
